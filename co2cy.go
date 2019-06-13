@@ -8,7 +8,7 @@ import (
   "log"
   "strings"
   "strconv"
-  // "os/exec"
+  "os/exec"
   // "encoding/json"
 )
 
@@ -22,6 +22,7 @@ type node struct {
   ModTime string
   ParentName string
   ParentId string
+  Contributers []string
 }
 var nodes []node
 var processedNodes = make(map[string]bool)
@@ -50,18 +51,17 @@ func main() {
       fmt.Println("Fullpath: " + path)
     }
 
-    /*
-    // TODO: find way to read git shortlog output
-    args := []string{"shortlog", "-n", "-s", path}
-    // args := []string{"log", "--pretty=format:\"%cn\"", "src", " | sort | uniq -c"}
+    args :=  []string{"log", "--format=\"%an\"", path}
     cmd := exec.Command("git", args...)
-    out, errCmd := cmd.Output()
+    out, errCmd := cmd.CombinedOutput()
     if errCmd != nil {
       log.Fatalf("cmd.Run() failed with %s\n", errCmd)
     }
     gitlog := string(out)
-    fmt.Println(gitlog)
-    */
+    contribs := strings.Split(gitlog, "\"")
+    if (len(contribs) > 0 && *verbose) {
+      fmt.Println(contribs)
+    }
 
     pathSegments := strings.Split(path, "/")
     for i, element := range pathSegments {
@@ -88,9 +88,10 @@ func main() {
           parentIndex = 0
         }
 
-        Parentid := strings.Replace(pathSegments[parentIndex], ".", "_", -1)
-        Parentid = strings.Replace(Parentid, "-", "_", -1)
-        Parentid += strconv.Itoa(parentIndex)
+        ParentId := strings.Replace(pathSegments[parentIndex], ".", "_", -1)
+        ParentId = pre + ParentId
+        ParentId = strings.Replace(ParentId, "-", "_", -1)
+        ParentId += strconv.Itoa(parentIndex)
 
         if (ext != "DS_Store") { // TODO: find way to run massive Cypher query before including those
           myNode := node{
@@ -102,7 +103,8 @@ func main() {
             IsDir: info.IsDir(),
             ModTime: info.ModTime().String(),
             ParentName: pathSegments[parentIndex],
-            ParentId : Parentid,
+            ParentId : ParentId,
+            Contributers: contribs,
           }
           if (*verbose) {
             fmt.Println(myNode)
@@ -127,6 +129,7 @@ func main() {
 
 
   processedNodes := []string{}
+  processedContributers := []string{}
   for i := range nodes {
     currentFile := nodes[i]
     if (currentFile.Name != "") {
@@ -138,10 +141,21 @@ func main() {
       if (!Contains(processedNodes, currentFile.Id)) {
         fmt.Println("CREATE (" + currentFile.Id + ":" + label + " { name: '" + currentFile.Name + "', parentName: '" + currentFile.ParentName + "', isDir: " + strconv.FormatBool(currentFile.IsDir) + ", size: " + currentFile.Size + " , time: '" + currentFile.ModTime + "', extension: '" +  currentFile.Extension + "' })")
         processedNodes = append(processedNodes, currentFile.Id)
+      }
 
-        if (currentFile.Id != currentFile.ParentId) {
-          fmt.Println("CREATE (" + currentFile.Id + ")-[:IN_FOLDER]->(" + currentFile.ParentId + ")")
+      for _, c := range currentFile.Contributers {
+        if (len(c) > 3) {
+          contributerId := "c_" + strings.Replace(c, " ", "", -1)
+          if (!Contains(processedContributers, c)) {
+            fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + c + "' })")
+            processedContributers = append(processedContributers, c)
+          }
+          fmt.Println("CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")")
         }
+      }
+
+      if (currentFile.Id != currentFile.ParentId) {
+        fmt.Println("CREATE (" + currentFile.Id + ")-[:IN_FOLDER]->(" + currentFile.ParentId + ")")
       }
     }
   }
