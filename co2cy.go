@@ -8,7 +8,7 @@ import (
   "log"
   "strings"
   "strconv"
-  "os/exec"
+  // "os/exec"
   // "encoding/json"
 )
 
@@ -27,6 +27,16 @@ var nodes []node
 var processedNodes = make(map[string]bool)
 var b strings.Builder
 
+// Contains tells whether a contains x.
+func Contains(a []string, x string) bool {
+  for _, n := range a {
+    if x == n {
+      return true
+    }
+  }
+  return false
+}
+
 func main() {
   verbose := flag.Bool("verbose", false, "log iteration through file tree")
   flag.Parse()
@@ -39,14 +49,19 @@ func main() {
     if (*verbose) {
       fmt.Println("Fullpath: " + path)
     }
-    // args := []string{"shortlog", "-n", "-s", "src"}
-    // cmd := exec.Command("git", args...)
-    cmd := exec.Command("git", "shortlog", "-s", path)
-    out, errCmd := cmd.CombinedOutput()
+
+    /*
+    // TODO: find way to read git shortlog output
+    args := []string{"shortlog", "-n", "-s", path}
+    // args := []string{"log", "--pretty=format:\"%cn\"", "src", " | sort | uniq -c"}
+    cmd := exec.Command("git", args...)
+    out, errCmd := cmd.Output()
     if errCmd != nil {
-      // log.Fatalf("cmd.Run() failed with %s\n", errCmd)
+      log.Fatalf("cmd.Run() failed with %s\n", errCmd)
     }
     gitlog := string(out)
+    fmt.Println(gitlog)
+    */
 
     pathSegments := strings.Split(path, "/")
     for i, element := range pathSegments {
@@ -59,10 +74,10 @@ func main() {
       fmt.Fprintf(&b, "%d-", i)
       if (processedNodes[b.String() + element] != true) {
         ext := ""
+        pre := "a_"
         id := strings.Replace(element, ".", "_", -1)
+        id = pre + id
         id = strings.Replace(id, "-", "_", -1)
-        // id = strings.Replace(id, "3", "A", -1) // TODO: replace find replacing \d regex
-        // id = strings.Replace(id, "8", "A", -1) // TODO: replace find replacing \d regex
         id += strconv.Itoa(i)
         if (info.IsDir() == false) {
           groups := strings.Split(element, ".")
@@ -77,8 +92,7 @@ func main() {
         Parentid = strings.Replace(Parentid, "-", "_", -1)
         Parentid += strconv.Itoa(parentIndex)
 
-        if (ext != "svg") { // TODO: find way to run massive Cypher query before including those
-        // if (true) {
+        if (ext != "DS_Store") { // TODO: find way to run massive Cypher query before including those
           myNode := node{
             Name: element,
             Size: strconv.FormatInt(info.Size(), 10),
@@ -101,7 +115,7 @@ func main() {
       }
       b.Reset()
     }
-    fmt.Println(gitlog)
+
     return nil
   })
 
@@ -111,6 +125,8 @@ func main() {
     fmt.Println("")
   }
 
+
+  processedNodes := []string{}
   for i := range nodes {
     currentFile := nodes[i]
     if (currentFile.Name != "") {
@@ -119,10 +135,13 @@ func main() {
         label = "file"
       }
 
-      fmt.Println("CREATE (" + currentFile.Id + ":" + label + " { name: '" + currentFile.Name + "', parentName: '" + currentFile.ParentName + "', isDir: " + strconv.FormatBool(currentFile.IsDir) + ", size: " + currentFile.Size + " , time: '" + currentFile.ModTime + "', extension: '" +  currentFile.Extension + "' })")
+      if (!Contains(processedNodes, currentFile.Id)) {
+        fmt.Println("CREATE (" + currentFile.Id + ":" + label + " { name: '" + currentFile.Name + "', parentName: '" + currentFile.ParentName + "', isDir: " + strconv.FormatBool(currentFile.IsDir) + ", size: " + currentFile.Size + " , time: '" + currentFile.ModTime + "', extension: '" +  currentFile.Extension + "' })")
+        processedNodes = append(processedNodes, currentFile.Id)
 
-      if (currentFile.Id != currentFile.ParentId) {
-        fmt.Println("CREATE (" + currentFile.Id + ")-[:IN_FOLDER]->(" + currentFile.ParentId + ")")
+        if (currentFile.Id != currentFile.ParentId) {
+          fmt.Println("CREATE (" + currentFile.Id + ")-[:IN_FOLDER]->(" + currentFile.ParentId + ")")
+        }
       }
     }
   }
