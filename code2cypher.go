@@ -9,7 +9,6 @@ import (
   "strings"
   "strconv"
   "os/exec"
-  // "encoding/json"
 )
 
 type node struct {
@@ -28,6 +27,7 @@ var nodes []node
 var processedNodes = make(map[string]bool)
 var b strings.Builder
 
+// from https://yourbasic.org/golang/find-search-contains-slice/ by Stefan Nilsson
 // Contains tells whether a contains x.
 func Contains(a []string, x string) bool {
   for _, n := range a {
@@ -42,80 +42,83 @@ func main() {
   verbose := flag.Bool("verbose", false, "log iteration through file tree")
   flag.Parse()
 
-  err := filepath.Walk("src/", func(path string, info os.FileInfo, err error) error {
+  err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
     if err != nil {
       return err
     }
 
-    if (*verbose) {
-      fmt.Println("Fullpath: " + path)
-    }
-
-    args :=  []string{"log", "--format=\"%an\"", path}
-    cmd := exec.Command("git", args...)
-    out, errCmd := cmd.CombinedOutput()
-    if errCmd != nil {
-      log.Fatalf("cmd.Run() failed with %s\n", errCmd)
-    }
-    gitlog := string(out)
-    contribs := strings.Split(gitlog, "\"")
-    if (len(contribs) > 0 && *verbose) {
-      fmt.Println(contribs)
-    }
-
-    pathSegments := strings.Split(path, "/")
-    for i, element := range pathSegments {
+    if (!strings.HasPrefix(path, ".") && !strings.HasPrefix(path, "node_modules")) {
 
       if (*verbose) {
-        fmt.Println("Pathsegment: " + element)
-        fmt.Println(info.IsDir())
+        fmt.Println("Fullpath: " + path)
       }
 
-      fmt.Fprintf(&b, "%d-", i)
-      if (processedNodes[b.String() + element] != true) {
-        ext := ""
-        pre := "a_"
-        id := strings.Replace(element, ".", "_", -1)
-        id = pre + id
-        id = strings.Replace(id, "-", "_", -1)
-        id += strconv.Itoa(i)
-        if (info.IsDir() == false) {
-          groups := strings.Split(element, ".")
-          ext = groups[len(groups) - 1]
-        }
-        parentIndex := i - 1
-        if (parentIndex < 0) {
-          parentIndex = 0
-        }
-
-        ParentId := strings.Replace(pathSegments[parentIndex], ".", "_", -1)
-        ParentId = pre + ParentId
-        ParentId = strings.Replace(ParentId, "-", "_", -1)
-        ParentId += strconv.Itoa(parentIndex)
-
-        if (ext != "DS_Store") { // TODO: find way to run massive Cypher query before including those
-          myNode := node{
-            Name: element,
-            Size: strconv.FormatInt(info.Size(), 10),
-            Level: i,
-            Extension: ext,
-            Id: id,
-            IsDir: info.IsDir(),
-            ModTime: info.ModTime().String(),
-            ParentName: pathSegments[parentIndex],
-            ParentId : ParentId,
-            Contributers: contribs,
-          }
-          if (*verbose) {
-            fmt.Println(myNode)
-          }
-
-          nodes = append(nodes, myNode)
-
-          processedNodes[b.String() + element] = true
-        }
+      args :=  []string{"log", "--format=\"%an\"", path}
+      cmd := exec.Command("git", args...)
+      out, errCmd := cmd.CombinedOutput()
+      if errCmd != nil {
+        log.Fatalf("cmd.Run() failed with %s\n", errCmd)
       }
-      b.Reset()
+      gitlog := string(out)
+      contribs := strings.Split(gitlog, "\"")
+      if (len(contribs) > 0 && *verbose) {
+        fmt.Println(contribs)
+      }
+
+      pathSegments := strings.Split(path, "/")
+      for i, element := range pathSegments {
+
+        if (*verbose) {
+          fmt.Println("Pathsegment: " + element)
+          fmt.Println(info.IsDir())
+        }
+
+        fmt.Fprintf(&b, "%d-", i)
+        if (processedNodes[b.String() + element] != true) {
+          ext := ""
+          pre := "a_"
+          id := strings.Replace(element, ".", "_", -1)
+          id = pre + id
+          id = strings.Replace(id, "-", "_", -1)
+          id += strconv.Itoa(i)
+          if (info.IsDir() == false) {
+            groups := strings.Split(element, ".")
+            ext = groups[len(groups) - 1]
+          }
+          parentIndex := i - 1
+          if (parentIndex < 0) {
+            parentIndex = 0
+          }
+
+          ParentId := strings.Replace(pathSegments[parentIndex], ".", "_", -1)
+          ParentId = pre + ParentId
+          ParentId = strings.Replace(ParentId, "-", "_", -1)
+          ParentId += strconv.Itoa(parentIndex)
+
+          if (ext != "DS_Store") {
+            myNode := node{
+              Name: element,
+              Size: strconv.FormatInt(info.Size(), 10),
+              Level: i,
+              Extension: ext,
+              Id: id,
+              IsDir: info.IsDir(),
+              ModTime: info.ModTime().String(),
+              ParentName: pathSegments[parentIndex],
+              ParentId : ParentId,
+              Contributers: contribs,
+            }
+            if (*verbose) {
+              fmt.Println(myNode)
+            }
+
+            nodes = append(nodes, myNode)
+
+            processedNodes[b.String() + element] = true
+          }
+        }
+        b.Reset()
+      }
     }
 
     return nil
@@ -159,12 +162,6 @@ func main() {
       }
     }
   }
-
-  // z, _ := json.Marshal(nodes)
-  // fmt.Println("UNWIND " + string(z) + " AS n")
-  // fmt.Println("CREATE (m:file { name: n.name })")
-  // fmt.Println("RETURN m")
-
 
   if err != nil {
     log.Println(err)
