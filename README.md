@@ -15,5 +15,8 @@ To turn a GIT repository into a graph, follow these steps:
 - build the executable bu running `go build` in the root of this project
 - place the executable in the root folder of your repository
 - execute the file (the Cypher statements are written to StdOut)
-- pipe the Cypher statements to Cypher shell or into a .cypher file you can import to [Neo4j Desktop](https://neo4j.com/developer/neo4j-desktop/)
+- pipe the Cypher statements to [Cypher Shell](https://neo4j.com/docs/operations-manual/current/tools/cypher-shell/) or into a .cypher file you can import to [Neo4j Desktop](https://neo4j.com/developer/neo4j-desktop/)
 
+Below is a screenshot of what the graph from the [hellogitworld](https://github.com/githubtraining/hellogitworld) repository looks like in Neo4j Desktop
+
+![Neo4j Desktop Screenshot](https://github.com/ckanz/code2cypher/blob/master/screenshot.png)
