@@ -133,6 +133,7 @@ func main() {
 
   processedNodes := []string{}
   processedContributers := []string{}
+  processedContributions := []string{}
   for i := range nodes {
     currentFile := nodes[i]
     if (currentFile.Name != "") {
@@ -153,7 +154,11 @@ func main() {
             fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + c + "' })")
             processedContributers = append(processedContributers, c)
           }
-          fmt.Println("CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")")
+          contributionCypherStatement := "CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")"
+          if (!Contains(processedContributions, contributionCypherStatement)) {
+            processedContributions = append(processedContributions, contributionCypherStatement)
+            fmt.Println(contributionCypherStatement)
+          }
         }
       }
 
