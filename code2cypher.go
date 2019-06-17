@@ -9,6 +9,7 @@ import (
   "strings"
   "strconv"
   "os/exec"
+  "regexp"
 )
 
 type node struct {
@@ -41,6 +42,8 @@ func Contains(a []string, x string) bool {
 func main() {
   verbose := flag.Bool("verbose", false, "log iteration through file tree")
   flag.Parse()
+
+  reStr := regexp.MustCompile(`\W`)
 
   err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
     if err != nil {
@@ -79,7 +82,7 @@ func main() {
           pre := "a_"
           id := strings.Replace(element, ".", "_", -1)
           id = pre + id
-          id = strings.Replace(id, "-", "_", -1)
+          id = reStr.ReplaceAllString(id, "$1")
           id += strconv.Itoa(i)
           if (info.IsDir() == false) {
             groups := strings.Split(element, ".")
@@ -92,7 +95,7 @@ func main() {
 
           ParentId := strings.Replace(pathSegments[parentIndex], ".", "_", -1)
           ParentId = pre + ParentId
-          ParentId = strings.Replace(ParentId, "-", "_", -1)
+          ParentId = reStr.ReplaceAllString(ParentId, "$1")
           ParentId += strconv.Itoa(parentIndex)
 
           if (ext != "DS_Store") {
@@ -150,6 +153,7 @@ func main() {
       for _, c := range currentFile.Contributers {
         if (len(c) > 3) {
           contributerId := "c_" + strings.Replace(c, " ", "", -1)
+          contributerId = reStr.ReplaceAllString(contributerId, "$1")
           if (!Contains(processedContributers, c)) {
             fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + c + "' })")
             processedContributers = append(processedContributers, c)
