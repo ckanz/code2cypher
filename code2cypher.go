@@ -25,20 +25,12 @@ type node struct {
   Contributers []string
 }
 var nodes []node
-var processedElements = make(map[string]bool)
+var processedFiles = make(map[string]bool)
+var processedNodes = make(map[string]bool)
+var processedContributers = make(map[string]bool)
+var processedContributions = make(map[string]bool)
 var verbose bool
 var reStr = regexp.MustCompile(`\W`)
-
-// contains tells whether a contains x.
-// from https://yourbasic.org/golang/find-search-contains-slice/ by Stefan Nilsson
-func contains(a []string, x string) bool {
-  for _, n := range a {
-    if x == n {
-      return true
-    }
-  }
-  return false
-}
 
 // initFlags parses the command line flags
 func initFlags() {
@@ -64,6 +56,7 @@ func getGitLog(path string) string {
 }
 
 // getUniqueNameString creates a unique string for a file based on its nested depth in the folder and its name
+// TODO: instead of depth, modified timestamp might be a better value to create unique variable names with
 func getUniqueNameString(index int, element string) string {
   var stringBuilder strings.Builder
   fmt.Fprintf(&stringBuilder, "%d-", index)
@@ -108,7 +101,6 @@ func main() {
     }
 
     if (includePath(path)) {
-
       verboseLog("Fullpath: " + path)
 
       pathSegments := strings.Split(path, "/")
@@ -116,7 +108,7 @@ func main() {
       fileName := info.Name()
       uniqueNameString := getUniqueNameString(fileDepth, fileName)
 
-      if (processedElements[uniqueNameString] != true) {
+      if (processedFiles[uniqueNameString] != true) {
         parentDepth := fileDepth - 1
         if (parentDepth < 0) {
           parentDepth = 0
@@ -136,8 +128,7 @@ func main() {
         }
 
         nodes = append(nodes, myNode)
-
-        processedElements[uniqueNameString] = true
+        processedFiles[uniqueNameString] = true
       }
     }
 
@@ -148,44 +139,38 @@ func main() {
   verboseLog("------------------------------------------------------------------------")
   verboseLog("")
 
-  // TODO: use make like above with processedElements
-  processedNodes := []string{}
-  processedContributers := []string{}
-  processedContributions := []string{}
   for i := range nodes {
     currentFile := nodes[i]
-    if (currentFile.Name != "") {
-      label := "directory"
-      if (currentFile.IsDir != true) {
-        label = "file"
-      }
+    label := "directory"
+    if (currentFile.IsDir != true) {
+      label = "file"
+    }
 
-      if (!contains(processedNodes, currentFile.Id)) {
-        fmt.Println("CREATE (" + currentFile.Id + ":" + label + " { name: '" + currentFile.Name + "', parentName: '" + currentFile.ParentName + "', isDir: " + strconv.FormatBool(currentFile.IsDir) + ", size: " + currentFile.Size + " , time: '" + currentFile.ModTime + "', extension: '" +  currentFile.Extension + "' })")
-        processedNodes = append(processedNodes, currentFile.Id)
-      }
+    if (!processedNodes[currentFile.Id]) {
+      fmt.Println("CREATE (" + currentFile.Id + ":" + label + " { name: '" + currentFile.Name + "', parentName: '" + currentFile.ParentName + "', isDir: " + strconv.FormatBool(currentFile.IsDir) + ", size: " + currentFile.Size + " , time: '" + currentFile.ModTime + "', extension: '" +  currentFile.Extension + "' })")
+      processedNodes[currentFile.Id] = true
+    }
 
-      if (label == "file") {
-        for _, c := range currentFile.Contributers {
-          if (len(c) > 3) {
-            contributerId := "c_" + strings.Replace(c, " ", "", -1)
-            contributerId = reStr.ReplaceAllString(contributerId, "$1")
-            if (!contains(processedContributers, c)) {
-              fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + c + "' })")
-              processedContributers = append(processedContributers, c)
-            }
-            contributionCypherStatement := "CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")"
-            if (!contains(processedContributions, contributionCypherStatement)) {
-              processedContributions = append(processedContributions, contributionCypherStatement)
-              fmt.Println(contributionCypherStatement)
-            }
+    if (label == "file") {
+      for _, c := range currentFile.Contributers {
+        if (len(c) > 3) {
+          contributerId := "c_" + strings.Replace(c, " ", "", -1)
+          contributerId = reStr.ReplaceAllString(contributerId, "$1")
+          if (!processedContributers[c]) {
+            fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + c + "' })")
+            processedContributers[c] = true
+          }
+          contributionCypherStatement := "CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")"
+          if (!processedContributions[contributionCypherStatement]) {
+            fmt.Println(contributionCypherStatement)
+            processedContributions[contributionCypherStatement] = true
           }
         }
       }
+    }
 
-      if (currentFile.Id != currentFile.ParentId) {
-        fmt.Println("CREATE (" + currentFile.Id + ")-[:IN_FOLDER]->(" + currentFile.ParentId + ")")
-      }
+    if (currentFile.Id != currentFile.ParentId) {
+      fmt.Println("CREATE (" + currentFile.Id + ")-[:IN_FOLDER]->(" + currentFile.ParentId + ")")
     }
   }
 
