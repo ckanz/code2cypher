@@ -12,19 +12,19 @@ import (
   "regexp"
 )
 
-type node struct {
+type fileInfo struct {
   Name string
   Size string
   Level int
   IsDir bool
   Id string
   Extension string
-  ModTime string
+  ModTime int64
   ParentName string
   ParentId string
   Contributers []string
 }
-var nodes []node
+var nodes []fileInfo
 var processedFiles = make(map[string]bool)
 var processedNodes = make(map[string]bool)
 var processedContributers = make(map[string]bool)
@@ -87,7 +87,7 @@ func createCypherFriendlyVarName(s string, i int) string {
 }
 
 // getLabelForFileNode returns the correct label for a given element
-func getLabelForFileNode(currentFile node) string {
+func getLabelForFileNode(currentFile fileInfo) string {
   if (currentFile.IsDir) {
     return "directory"
   }
@@ -95,12 +95,12 @@ func getLabelForFileNode(currentFile node) string {
 }
 
 // fileInfoToCypher returns a cypher statement to create a node for a given file
-func fileInfoToCypher(currentFile node, label string) string {
+func fileInfoToCypher(currentFile fileInfo, label string) string {
   properties := (
     "{ name: '" + currentFile.Name + "', " +
-    "isDir: " + strconv.FormatBool(currentFile.IsDir) + ", " +
     "size: " + currentFile.Size + ", " +
-    "time: '" + currentFile.ModTime + "', " +
+    "lastModifiedDateTime: datetime({ epochseconds: " + strconv.FormatInt(currentFile.ModTime, 10) + " }), " +
+    "lastModifiedTimestamp: " + strconv.FormatInt(currentFile.ModTime, 10) + ", " +
     "extension: '" + currentFile.Extension + "' " +
     "}")
   return "CREATE (" + currentFile.Id + ":" + label + " " + properties + ")"
@@ -117,12 +117,11 @@ func contributionToCypher(fileId, contributerId string) string {
 }
 
 // folderStructureToCypher returns to cypher statement to create a relationship between a file and its parent folder
-func folderStructureToCypher(currentFile node) string {
+func folderStructureToCypher(currentFile fileInfo) string {
   return "CREATE (" + currentFile.Id + ")-[:IN_FOLDER]->(" + currentFile.ParentId + ")"
 }
 
 func main() {
-
   initFlags()
 
   err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
@@ -144,20 +143,18 @@ func main() {
           parentDepth = 0
         }
 
-        myNode := node{
+        nodes = append(nodes, fileInfo{
           Name: fileName,
           Size: strconv.FormatInt(info.Size(), 10),
           Level: fileDepth,
           Extension: getFileExtension(info),
           Id: createCypherFriendlyVarName(fileName, fileDepth),
           IsDir: info.IsDir(),
-          ModTime: info.ModTime().String(), // TODO: should be available as numeric timestamp too so it can be used in conditional styling
+          ModTime: info.ModTime().Unix(),
           ParentName: pathSegments[parentDepth],
           ParentId : createCypherFriendlyVarName(pathSegments[parentDepth], parentDepth),
           Contributers: strings.Split(getGitLog(path), "\""),
-        }
-
-        nodes = append(nodes, myNode)
+        })
         processedFiles[uniqueNameString] = true
       }
     }
