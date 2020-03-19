@@ -77,6 +77,13 @@ func getFileExtension (element string) string {
   return stringSegments[len(stringSegments) - 1]
 }
 
+// verboseLog writes a string to stdOut if the verbose flag is set
+func verboseLog(toLog string) {
+  if (verbose) {
+    fmt.Println(toLog)
+  }
+}
+
 func main() {
 
   initFlags()
@@ -88,24 +95,17 @@ func main() {
 
     if (includePath(path)) {
 
-      if (verbose) {
-        fmt.Println("Fullpath: " + path)
-      }
+      verboseLog("Fullpath: " + path)
 
       contributers := strings.Split(getGitLog(path), "\"")
 
-      if (len(contributers) > 0 && verbose) {
-        fmt.Println(contributers)
-      }
+      verboseLog("contributers: " + strings.Join(contributers, ","))
 
       pathSegments := strings.Split(path, "/")
       fileDepth := len(pathSegments) - 1
       fileName := info.Name()
 
-      if (verbose) {
-        fmt.Println("Pathsegment: " + fileName)
-        fmt.Println(info.IsDir())
-      }
+      verboseLog("Pathsegment: " + fileName)
 
       uniqueNameString := getUniqueNameString(fileDepth, fileName)
       if (processedElements[uniqueNameString] != true) {
@@ -143,9 +143,7 @@ func main() {
           Contributers: contributers,
         }
 
-        if (verbose) {
-          fmt.Println(myNode)
-        }
+        verboseLog(myNode)
 
         nodes = append(nodes, myNode)
 
@@ -157,11 +155,9 @@ func main() {
     return nil
   })
 
-  if (verbose) {
-    fmt.Println("")
-    fmt.Println("------------------------------------------------------------------------")
-    fmt.Println("")
-  }
+  verboseLog("")
+  verboseLog("------------------------------------------------------------------------")
+  verboseLog("")
 
   // TODO: use make like above with processedElements
   processedNodes := []string{}
