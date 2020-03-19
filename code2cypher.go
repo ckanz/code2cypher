@@ -99,7 +99,7 @@ func main() {
       }
 
       pathSegments := strings.Split(path, "/")
-      index := len(pathSegments) - 1
+      depth := len(pathSegments) - 1
       element := info.Name()
 
       if (verbose) {
@@ -107,38 +107,38 @@ func main() {
         fmt.Println(info.IsDir())
       }
 
-      elementString := getUniqueNameString(index, element)
+      elementString := getUniqueNameString(depth, element)
       if (processedElements[elementString] != true) {
         pre := "a_"
         id := strings.Replace(element, ".", "_", -1)
         id = pre + id
         id = reStr.ReplaceAllString(id, "$1")
-        id += strconv.Itoa(index)
+        id += strconv.Itoa(depth)
 
         fileExtension := ""
         if (info.IsDir() == false) {
           groups := strings.Split(element, ".")
           fileExtension = groups[len(groups) - 1]
         }
-        parentIndex := index - 1
-        if (parentIndex < 0) {
-          parentIndex = 0
+        parentDepth := depth - 1
+        if (parentDepth < 0) {
+          parentDepth = 0
         }
 
-        ParentId := strings.Replace(pathSegments[parentIndex], ".", "_", -1)
+        ParentId := strings.Replace(pathSegments[parentDepth], ".", "_", -1)
         ParentId = pre + ParentId
         ParentId = reStr.ReplaceAllString(ParentId, "$1")
-        ParentId += strconv.Itoa(parentIndex)
+        ParentId += strconv.Itoa(parentDepth)
 
         myNode := node{
           Name: element,
           Size: strconv.FormatInt(info.Size(), 10),
-          Level: index,
+          Level: depth,
           Extension: fileExtension,
           Id: id,
           IsDir: info.IsDir(),
           ModTime: info.ModTime().String(),
-          ParentName: pathSegments[parentIndex],
+          ParentName: pathSegments[parentDepth],
           ParentId : ParentId,
           Contributers: contributers,
         }
