@@ -99,59 +99,59 @@ func main() {
       }
 
       pathSegments := strings.Split(path, "/")
-      for index, element := range pathSegments {
+      index := len(pathSegments) - 1
+      element := info.Name()
+
+      if (verbose) {
+        fmt.Println("Pathsegment: " + element)
+        fmt.Println(info.IsDir())
+      }
+
+      elementString := getUniqueNameString(index, element)
+      if (processedElements[elementString] != true) {
+        pre := "a_"
+        id := strings.Replace(element, ".", "_", -1)
+        id = pre + id
+        id = reStr.ReplaceAllString(id, "$1")
+        id += strconv.Itoa(index)
+
+        fileExtension := ""
+        if (info.IsDir() == false) {
+          groups := strings.Split(element, ".")
+          fileExtension = groups[len(groups) - 1]
+        }
+        parentIndex := index - 1
+        if (parentIndex < 0) {
+          parentIndex = 0
+        }
+
+        ParentId := strings.Replace(pathSegments[parentIndex], ".", "_", -1)
+        ParentId = pre + ParentId
+        ParentId = reStr.ReplaceAllString(ParentId, "$1")
+        ParentId += strconv.Itoa(parentIndex)
+
+        myNode := node{
+          Name: element,
+          Size: strconv.FormatInt(info.Size(), 10),
+          Level: index,
+          Extension: fileExtension,
+          Id: id,
+          IsDir: info.IsDir(),
+          ModTime: info.ModTime().String(),
+          ParentName: pathSegments[parentIndex],
+          ParentId : ParentId,
+          Contributers: contributers,
+        }
 
         if (verbose) {
-          fmt.Println("Pathsegment: " + element)
-          fmt.Println(info.IsDir())
+          fmt.Println(myNode)
         }
 
-        elementString := getUniqueNameString(index, element)
-        if (processedElements[elementString] != true) {
-          pre := "a_"
-          id := strings.Replace(element, ".", "_", -1)
-          id = pre + id
-          id = reStr.ReplaceAllString(id, "$1")
-          id += strconv.Itoa(index)
+        nodes = append(nodes, myNode)
 
-          fileExtension := ""
-          if (info.IsDir() == false) {
-            groups := strings.Split(element, ".")
-            fileExtension = groups[len(groups) - 1]
-          }
-          parentIndex := index - 1
-          if (parentIndex < 0) {
-            parentIndex = 0
-          }
-
-          ParentId := strings.Replace(pathSegments[parentIndex], ".", "_", -1)
-          ParentId = pre + ParentId
-          ParentId = reStr.ReplaceAllString(ParentId, "$1")
-          ParentId += strconv.Itoa(parentIndex)
-
-          myNode := node{
-            Name: element,
-            Size: strconv.FormatInt(info.Size(), 10),
-            Level: index,
-            Extension: fileExtension,
-            Id: id,
-            IsDir: info.IsDir(),
-            ModTime: info.ModTime().String(),
-            ParentName: pathSegments[parentIndex],
-            ParentId : ParentId,
-            Contributers: contributers,
-          }
-
-          if (verbose) {
-            fmt.Println(myNode)
-          }
-
-          nodes = append(nodes, myNode)
-
-          processedElements[elementString] = true
-        }
-        stringBuilder.Reset()
+        processedElements[elementString] = true
       }
+      stringBuilder.Reset()
     }
 
     return nil
