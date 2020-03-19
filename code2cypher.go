@@ -72,14 +72,14 @@ func _prototype_getGitLog(path string) fileContributer {
 
 // getGitLog returns the list of contributers of a given path
 // TODO: return array of fileContributer instead
-func getGitLog(path string) string {
-  args :=  []string{"log", "--format=\"%an\"", path}
+func getGitLog(path string) []string {
+  args :=  []string{"log", "--format=%an", path}
   cmd := exec.Command("git", args...)
   out, errCmd := cmd.CombinedOutput()
   if errCmd != nil {
     log.Fatalf("cmd.Run() failed with %s\n", errCmd)
   }
-  return string(out)
+  return strings.Split(string(out), "\n")
 }
 
 // getUniqueNameString creates a unique string for a file based on its nested depth in the folder and its name
@@ -180,7 +180,7 @@ func main() {
           ModTime: info.ModTime().Unix(),
           ParentName: pathSegments[parentDepth],
           ParentId : createCypherFriendlyVarName(pathSegments[parentDepth], parentDepth),
-          Contributers: strings.Split(getGitLog(path), "\""),
+          Contributers: getGitLog(path),
         })
         processedFiles[uniqueNameString] = true
       }
