@@ -58,12 +58,7 @@ func getGitLog(path string) string {
 // getUniqueNameString creates a unique string for a file based on its nested depth in the folder and its name
 // TODO: instead of depth, modified timestamp might be a better value to create unique variable names with
 func getUniqueNameString(index int, element string) string {
-  var stringBuilder strings.Builder
-  fmt.Fprintf(&stringBuilder, "%d-", index)
-  stringBuilder.WriteString(element)
-  uniqueNameString := stringBuilder.String()
-  stringBuilder.Reset()
-  return uniqueNameString
+  return strconv.Itoa(index) + "-" + element
 }
 
 // getFileExtension returns the extension for a given file's full name
@@ -89,6 +84,13 @@ func createCypherFriendlyVarName(s string, i int) string {
   id = reStr.ReplaceAllString(id, "$1")
   id += strconv.Itoa(i)
   return id
+}
+
+func getLabelForFileNode(currentFile node) string {
+  if (currentFile.IsDir) {
+    return "directory"
+  }
+  return "file"
 }
 
 func main() {
@@ -139,12 +141,8 @@ func main() {
   verboseLog("------------------------------------------------------------------------")
   verboseLog("")
 
-  for i := range nodes {
-    currentFile := nodes[i]
-    label := "directory"
-    if (currentFile.IsDir != true) {
-      label = "file"
-    }
+  for _, currentFile := range nodes {
+    label := getLabelForFileNode(currentFile)
 
     if (!processedNodes[currentFile.Id]) {
       fmt.Println("CREATE (" + currentFile.Id + ":" + label + " { name: '" + currentFile.Name + "', parentName: '" + currentFile.ParentName + "', isDir: " + strconv.FormatBool(currentFile.IsDir) + ", size: " + currentFile.Size + " , time: '" + currentFile.ModTime + "', extension: '" +  currentFile.Extension + "' })")
@@ -152,19 +150,16 @@ func main() {
     }
 
     if (label == "file") {
-      for _, c := range currentFile.Contributers {
-        if (len(c) > 3) {
-          contributerId := "c_" + strings.Replace(c, " ", "", -1)
-          contributerId = reStr.ReplaceAllString(contributerId, "$1")
-          if (!processedContributers[c]) {
-            fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + c + "' })")
-            processedContributers[c] = true
-          }
-          contributionCypherStatement := "CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")"
-          if (!processedContributions[contributionCypherStatement]) {
-            fmt.Println(contributionCypherStatement)
-            processedContributions[contributionCypherStatement] = true
-          }
+      for _, contributer := range currentFile.Contributers {
+        contributerId := createCypherFriendlyVarName(contributer, 0)
+        if (!processedContributers[contributer]) {
+          fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + contributer + "' })")
+          processedContributers[contributer] = true
+        }
+        contributionCypherStatement := "CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")"
+        if (!processedContributions[contributionCypherStatement]) {
+          fmt.Println(contributionCypherStatement)
+          processedContributions[contributionCypherStatement] = true
         }
       }
     }
