@@ -27,6 +27,7 @@ type node struct {
 var nodes []node
 var processedNodes = make(map[string]bool)
 var b strings.Builder
+var verbose bool
 
 // from https://yourbasic.org/golang/find-search-contains-slice/ by Stefan Nilsson
 // Contains tells whether a contains x.
@@ -40,7 +41,7 @@ func Contains(a []string, x string) bool {
 }
 
 func main() {
-  verbose := flag.Bool("verbose", false, "log iteration through file tree")
+  flag.BoolVar(&verbose, "verbose", false, "log iteration through file tree")
   flag.Parse()
 
   reStr := regexp.MustCompile(`\W`)
@@ -52,7 +53,7 @@ func main() {
 
     if (!strings.HasPrefix(path, ".") && !strings.HasPrefix(path, "node_modules")) {
 
-      if (*verbose) {
+      if (verbose) {
         fmt.Println("Fullpath: " + path)
       }
 
@@ -64,14 +65,14 @@ func main() {
       }
       gitlog := string(out)
       contribs := strings.Split(gitlog, "\"")
-      if (len(contribs) > 0 && *verbose) {
+      if (len(contribs) > 0 && verbose) {
         fmt.Println(contribs)
       }
 
       pathSegments := strings.Split(path, "/")
       for i, element := range pathSegments {
 
-        if (*verbose) {
+        if (verbose) {
           fmt.Println("Pathsegment: " + element)
           fmt.Println(info.IsDir())
         }
@@ -111,7 +112,7 @@ func main() {
               ParentId : ParentId,
               Contributers: contribs,
             }
-            if (*verbose) {
+            if (verbose) {
               fmt.Println(myNode)
             }
 
@@ -127,7 +128,7 @@ func main() {
     return nil
   })
 
-  if (*verbose) {
+  if (verbose) {
     fmt.Println("")
     fmt.Println("------------------------------------------------------------------------")
     fmt.Println("")
