@@ -25,13 +25,14 @@ type node struct {
   Contributers []string
 }
 var nodes []node
-var processedNodes = make(map[string]bool)
-var b strings.Builder
+var processedElements = make(map[string]bool)
+var stringBuilder strings.Builder
 var verbose bool
+var reStr = regexp.MustCompile(`\W`)
 
+// contains tells whether a contains x.
 // from https://yourbasic.org/golang/find-search-contains-slice/ by Stefan Nilsson
-// Contains tells whether a contains x.
-func Contains(a []string, x string) bool {
+func contains(a []string, x string) bool {
   for _, n := range a {
     if x == n {
       return true
@@ -40,56 +41,85 @@ func Contains(a []string, x string) bool {
   return false
 }
 
-func main() {
+// initFlags parses the command line flags
+func initFlags() {
   flag.BoolVar(&verbose, "verbose", false, "log iteration through file tree")
   flag.Parse()
+}
 
-  reStr := regexp.MustCompile(`\W`)
+// includePath evaluates whether to include a path in the resulting graph or not
+func includePath(path string) bool {
+  // TODO: should be a list coming from .gitignore
+  return !strings.HasPrefix(path, ".") && !strings.HasPrefix(path, "node_modules")
+}
+
+// getGitLog returns the list of contributers of a given path
+func getGitLog(path string) string {
+  args :=  []string{"log", "--format=\"%an\"", path}
+  cmd := exec.Command("git", args...)
+  out, errCmd := cmd.CombinedOutput()
+  if errCmd != nil {
+    log.Fatalf("cmd.Run() failed with %s\n", errCmd)
+  }
+  return string(out)
+}
+
+// getUniqueNameString creates a unique string for a file based on its nested depth in the folder and its name
+func getUniqueNameString(index int, element string) string {
+  fmt.Fprintf(&stringBuilder, "%d-", index)
+  stringBuilder.WriteString(element)
+  return stringBuilder.String()
+}
+
+// getFileExtension returns the extension for a given file's full name
+func getFileExtension (element string) string {
+  stringSegments := strings.Split(element, ".")
+  return stringSegments[len(stringSegments) - 1]
+}
+
+func main() {
+
+  initFlags()
 
   err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
     if err != nil {
       return err
     }
 
-    if (!strings.HasPrefix(path, ".") && !strings.HasPrefix(path, "node_modules")) {
+    if (includePath(path)) {
 
       if (verbose) {
         fmt.Println("Fullpath: " + path)
       }
 
-      args :=  []string{"log", "--format=\"%an\"", path}
-      cmd := exec.Command("git", args...)
-      out, errCmd := cmd.CombinedOutput()
-      if errCmd != nil {
-        log.Fatalf("cmd.Run() failed with %s\n", errCmd)
-      }
-      gitlog := string(out)
-      contribs := strings.Split(gitlog, "\"")
-      if (len(contribs) > 0 && verbose) {
-        fmt.Println(contribs)
+      contributers := strings.Split(getGitLog(path), "\"")
+
+      if (len(contributers) > 0 && verbose) {
+        fmt.Println(contributers)
       }
 
       pathSegments := strings.Split(path, "/")
-      for i, element := range pathSegments {
+      for index, element := range pathSegments {
 
         if (verbose) {
           fmt.Println("Pathsegment: " + element)
           fmt.Println(info.IsDir())
         }
 
-        fmt.Fprintf(&b, "%d-", i)
-        if (processedNodes[b.String() + element] != true) {
-          ext := ""
+        elementString := getUniqueNameString(index, element)
+        if (processedElements[elementString] != true) {
           pre := "a_"
           id := strings.Replace(element, ".", "_", -1)
           id = pre + id
           id = reStr.ReplaceAllString(id, "$1")
-          id += strconv.Itoa(i)
+          id += strconv.Itoa(index)
+
+          fileExtension := ""
           if (info.IsDir() == false) {
             groups := strings.Split(element, ".")
-            ext = groups[len(groups) - 1]
+            fileExtension = groups[len(groups) - 1]
           }
-          parentIndex := i - 1
+          parentIndex := index - 1
           if (parentIndex < 0) {
             parentIndex = 0
           }
@@ -99,29 +129,28 @@ func main() {
           ParentId = reStr.ReplaceAllString(ParentId, "$1")
           ParentId += strconv.Itoa(parentIndex)
 
-          if (ext != "DS_Store") {
-            myNode := node{
-              Name: element,
-              Size: strconv.FormatInt(info.Size(), 10),
-              Level: i,
-              Extension: ext,
-              Id: id,
-              IsDir: info.IsDir(),
-              ModTime: info.ModTime().String(),
-              ParentName: pathSegments[parentIndex],
-              ParentId : ParentId,
-              Contributers: contribs,
-            }
-            if (verbose) {
-              fmt.Println(myNode)
-            }
-
-            nodes = append(nodes, myNode)
-
-            processedNodes[b.String() + element] = true
+          myNode := node{
+            Name: element,
+            Size: strconv.FormatInt(info.Size(), 10),
+            Level: index,
+            Extension: fileExtension,
+            Id: id,
+            IsDir: info.IsDir(),
+            ModTime: info.ModTime().String(),
+            ParentName: pathSegments[parentIndex],
+            ParentId : ParentId,
+            Contributers: contributers,
           }
+
+          if (verbose) {
+            fmt.Println(myNode)
+          }
+
+          nodes = append(nodes, myNode)
+
+          processedElements[elementString] = true
         }
-        b.Reset()
+        stringBuilder.Reset()
       }
     }
 
@@ -134,7 +163,7 @@ func main() {
     fmt.Println("")
   }
 
-
+  // TODO: use make like above with processedElements
   processedNodes := []string{}
   processedContributers := []string{}
   processedContributions := []string{}
@@ -146,7 +175,7 @@ func main() {
         label = "file"
       }
 
-      if (!Contains(processedNodes, currentFile.Id)) {
+      if (!contains(processedNodes, currentFile.Id)) {
         fmt.Println("CREATE (" + currentFile.Id + ":" + label + " { name: '" + currentFile.Name + "', parentName: '" + currentFile.ParentName + "', isDir: " + strconv.FormatBool(currentFile.IsDir) + ", size: " + currentFile.Size + " , time: '" + currentFile.ModTime + "', extension: '" +  currentFile.Extension + "' })")
         processedNodes = append(processedNodes, currentFile.Id)
       }
@@ -156,12 +185,12 @@ func main() {
           if (len(c) > 3) {
             contributerId := "c_" + strings.Replace(c, " ", "", -1)
             contributerId = reStr.ReplaceAllString(contributerId, "$1")
-            if (!Contains(processedContributers, c)) {
+            if (!contains(processedContributers, c)) {
               fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + c + "' })")
               processedContributers = append(processedContributers, c)
             }
             contributionCypherStatement := "CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")"
-            if (!Contains(processedContributions, contributionCypherStatement)) {
+            if (!contains(processedContributions, contributionCypherStatement)) {
               processedContributions = append(processedContributions, contributionCypherStatement)
               fmt.Println(contributionCypherStatement)
             }
