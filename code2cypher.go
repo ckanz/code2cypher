@@ -97,7 +97,6 @@ func getGitLog(path string) []fileContribution {
       })
     }
   }
-  fmt.Println(fileContribs)
   return fileContribs
 }
 
