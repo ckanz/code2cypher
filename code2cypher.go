@@ -26,7 +26,6 @@ type node struct {
 }
 var nodes []node
 var processedElements = make(map[string]bool)
-var stringBuilder strings.Builder
 var verbose bool
 var reStr = regexp.MustCompile(`\W`)
 
@@ -66,15 +65,21 @@ func getGitLog(path string) string {
 
 // getUniqueNameString creates a unique string for a file based on its nested depth in the folder and its name
 func getUniqueNameString(index int, element string) string {
+  var stringBuilder strings.Builder
   fmt.Fprintf(&stringBuilder, "%d-", index)
   stringBuilder.WriteString(element)
-  return stringBuilder.String()
+  uniqueNameString := stringBuilder.String()
+  stringBuilder.Reset()
+  return uniqueNameString
 }
 
 // getFileExtension returns the extension for a given file's full name
-func getFileExtension (element string) string {
-  stringSegments := strings.Split(element, ".")
-  return stringSegments[len(stringSegments) - 1]
+func getFileExtension (info os.FileInfo) string {
+  if (info.IsDir() == false) {
+    stringSegments := strings.Split(info.Name(), ".")
+    return stringSegments[len(stringSegments) - 1]
+  }
+  return ""
 }
 
 // verboseLog writes a string to stdOut if the verbose flag is set
@@ -82,6 +87,15 @@ func verboseLog(toLog string) {
   if (verbose) {
     fmt.Println(toLog)
   }
+}
+
+// createCypherFriendlyVarName produces a string for a filename and its nested depth that can be safely used in cypher as a variable name
+func createCypherFriendlyVarName(s string, i int) string {
+  id := strings.Replace(s, ".", "_", -1)
+  id = "a_" + id
+  id = reStr.ReplaceAllString(id, "$1")
+  id += strconv.Itoa(i)
+  return id
 }
 
 func main() {
@@ -97,59 +111,34 @@ func main() {
 
       verboseLog("Fullpath: " + path)
 
-      contributers := strings.Split(getGitLog(path), "\"")
-
-      verboseLog("contributers: " + strings.Join(contributers, ","))
-
       pathSegments := strings.Split(path, "/")
       fileDepth := len(pathSegments) - 1
       fileName := info.Name()
-
-      verboseLog("Pathsegment: " + fileName)
-
       uniqueNameString := getUniqueNameString(fileDepth, fileName)
-      if (processedElements[uniqueNameString] != true) {
-        pre := "a_"
-        id := strings.Replace(fileName, ".", "_", -1)
-        id = pre + id
-        id = reStr.ReplaceAllString(id, "$1")
-        id += strconv.Itoa(fileDepth)
 
-        fileExtension := ""
-        if (info.IsDir() == false) {
-          groups := strings.Split(fileName, ".")
-          fileExtension = groups[len(groups) - 1]
-        }
+      if (processedElements[uniqueNameString] != true) {
         parentDepth := fileDepth - 1
         if (parentDepth < 0) {
           parentDepth = 0
         }
 
-        ParentId := strings.Replace(pathSegments[parentDepth], ".", "_", -1)
-        ParentId = pre + ParentId
-        ParentId = reStr.ReplaceAllString(ParentId, "$1")
-        ParentId += strconv.Itoa(parentDepth)
-
         myNode := node{
           Name: fileName,
           Size: strconv.FormatInt(info.Size(), 10),
           Level: fileDepth,
-          Extension: fileExtension,
-          Id: id,
+          Extension: getFileExtension(info),
+          Id: createCypherFriendlyVarName(fileName, fileDepth),
           IsDir: info.IsDir(),
-          ModTime: info.ModTime().String(),
+          ModTime: info.ModTime().String(), // TODO: should be available as numeric timestamp too so it can be used in conditional styling
           ParentName: pathSegments[parentDepth],
-          ParentId : ParentId,
-          Contributers: contributers,
+          ParentId : createCypherFriendlyVarName(pathSegments[parentDepth], parentDepth),
+          Contributers: strings.Split(getGitLog(path), "\""),
         }
-
-        verboseLog(myNode)
 
         nodes = append(nodes, myNode)
 
         processedElements[uniqueNameString] = true
       }
-      stringBuilder.Reset()
     }
 
     return nil
