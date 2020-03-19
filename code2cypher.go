@@ -150,18 +150,20 @@ func main() {
         processedNodes = append(processedNodes, currentFile.Id)
       }
 
-      for _, c := range currentFile.Contributers {
-        if (len(c) > 3) {
-          contributerId := "c_" + strings.Replace(c, " ", "", -1)
-          contributerId = reStr.ReplaceAllString(contributerId, "$1")
-          if (!Contains(processedContributers, c)) {
-            fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + c + "' })")
-            processedContributers = append(processedContributers, c)
-          }
-          contributionCypherStatement := "CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")"
-          if (!Contains(processedContributions, contributionCypherStatement)) {
-            processedContributions = append(processedContributions, contributionCypherStatement)
-            fmt.Println(contributionCypherStatement)
+      if (label == "file") {
+        for _, c := range currentFile.Contributers {
+          if (len(c) > 3) {
+            contributerId := "c_" + strings.Replace(c, " ", "", -1)
+            contributerId = reStr.ReplaceAllString(contributerId, "$1")
+            if (!Contains(processedContributers, c)) {
+              fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + c + "' })")
+              processedContributers = append(processedContributers, c)
+            }
+            contributionCypherStatement := "CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")"
+            if (!Contains(processedContributions, contributionCypherStatement)) {
+              processedContributions = append(processedContributions, contributionCypherStatement)
+              fmt.Println(contributionCypherStatement)
+            }
           }
         }
       }
