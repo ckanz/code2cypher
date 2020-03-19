@@ -151,15 +151,17 @@ func main() {
 
     if (label == "file") {
       for _, contributer := range currentFile.Contributers {
-        contributerId := createCypherFriendlyVarName(contributer, 0)
-        if (!processedContributers[contributer]) {
-          fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + contributer + "' })")
-          processedContributers[contributer] = true
-        }
-        contributionCypherStatement := "CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")"
-        if (!processedContributions[contributionCypherStatement]) {
-          fmt.Println(contributionCypherStatement)
-          processedContributions[contributionCypherStatement] = true
+        if (len(contributer) > 1) {
+          contributerId := createCypherFriendlyVarName(contributer, 0)
+          if (!processedContributers[contributer]) {
+            fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + contributer + "' })")
+            processedContributers[contributer] = true
+          }
+          contributionCypherStatement := "CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")"
+          if (!processedContributions[contributionCypherStatement]) {
+            fmt.Println(contributionCypherStatement)
+            processedContributions[contributionCypherStatement] = true
+          }
         }
       }
     }
