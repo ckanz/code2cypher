@@ -20,7 +20,7 @@ type fileContributer struct {
 }
 type fileInfo struct {
   Name string
-  Size string
+  Size int64
   Level int
   IsDir bool
   Id string
@@ -29,6 +29,7 @@ type fileInfo struct {
   ParentName string
   ParentId string
   Contributers []string
+  CommitCount int
 }
 var nodes []fileInfo
 var processedFiles = make(map[string]bool)
@@ -125,7 +126,8 @@ func getLabelForFileNode(currentFile fileInfo) string {
 func fileInfoToCypher(currentFile fileInfo, label string) string {
   properties := (
     "{ name: '" + currentFile.Name + "', " +
-    "size: " + currentFile.Size + ", " +
+    "size: " + strconv.FormatInt(currentFile.Size, 10) + ", " +
+    "commitCount: " + strconv.Itoa(currentFile.CommitCount) + ", " +
     "lastModifiedDateTime: datetime({ epochseconds: " + strconv.FormatInt(currentFile.ModTime, 10) + " }), " +
     "lastModifiedTimestamp: " + strconv.FormatInt(currentFile.ModTime, 10) + ", " +
     "extension: '" + currentFile.Extension + "' " +
@@ -170,9 +172,11 @@ func main() {
           parentDepth = 0
         }
 
+        contributers := getGitLog(path)
+
         nodes = append(nodes, fileInfo{
           Name: fileName,
-          Size: strconv.FormatInt(info.Size(), 10),
+          Size: info.Size(),
           Level: fileDepth,
           Extension: getFileExtension(info),
           Id: createCypherFriendlyVarName(fileName, fileDepth),
@@ -180,7 +184,8 @@ func main() {
           ModTime: info.ModTime().Unix(),
           ParentName: pathSegments[parentDepth],
           ParentId : createCypherFriendlyVarName(pathSegments[parentDepth], parentDepth),
-          Contributers: getGitLog(path),
+          Contributers: contributers,
+          CommitCount: len(contributers),
         })
         processedFiles[uniqueNameString] = true
       }
