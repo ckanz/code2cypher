@@ -86,11 +86,39 @@ func createCypherFriendlyVarName(s string, i int) string {
   return id
 }
 
+// getLabelForFileNode returns the correct label for a given element
 func getLabelForFileNode(currentFile node) string {
   if (currentFile.IsDir) {
     return "directory"
   }
   return "file"
+}
+
+// fileInfoToCypher returns a cypher statement to create a node for a given file
+func fileInfoToCypher(currentFile node, label string) string {
+  properties := (
+    "{ name: '" + currentFile.Name + "', " +
+    "isDir: " + strconv.FormatBool(currentFile.IsDir) + ", " +
+    "size: " + currentFile.Size + ", " +
+    "time: '" + currentFile.ModTime + "', " +
+    "extension: '" + currentFile.Extension + "' " +
+    "}")
+  return "CREATE (" + currentFile.Id + ":" + label + " " + properties + ")"
+}
+
+// contributerToCypher returns a cypher statement to create node for a given contributer
+func contributerToCypher(contributerId, contributer string) string {
+  return ("CREATE (" + contributerId + ":" + "person" + " { name: '" + contributer + "' })")
+}
+
+// contributionToCypher returns to cypher statement to create a relationship between a file and a contributer
+func contributionToCypher(fileId, contributerId string) string {
+  return "CREATE (" + fileId + ")<-[:EDITED]-(" + contributerId + ")"
+}
+
+// folderStructureToCypher returns to cypher statement to create a relationship between a file and its parent folder
+func folderStructureToCypher(currentFile node) string {
+  return "CREATE (" + currentFile.Id + ")-[:IN_FOLDER]->(" + currentFile.ParentId + ")"
 }
 
 func main() {
@@ -145,7 +173,7 @@ func main() {
     label := getLabelForFileNode(currentFile)
 
     if (!processedNodes[currentFile.Id]) {
-      fmt.Println("CREATE (" + currentFile.Id + ":" + label + " { name: '" + currentFile.Name + "', parentName: '" + currentFile.ParentName + "', isDir: " + strconv.FormatBool(currentFile.IsDir) + ", size: " + currentFile.Size + " , time: '" + currentFile.ModTime + "', extension: '" +  currentFile.Extension + "' })")
+      fmt.Println(fileInfoToCypher(currentFile, label))
       processedNodes[currentFile.Id] = true
     }
 
@@ -154,10 +182,10 @@ func main() {
         if (len(contributer) > 1) {
           contributerId := createCypherFriendlyVarName(contributer, 0)
           if (!processedContributers[contributer]) {
-            fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + contributer + "' })")
+            fmt.Println(contributerToCypher(contributerId, contributer))
             processedContributers[contributer] = true
           }
-          contributionCypherStatement := "CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")"
+          contributionCypherStatement := contributionToCypher(currentFile.Id, contributerId)
           if (!processedContributions[contributionCypherStatement]) {
             fmt.Println(contributionCypherStatement)
             processedContributions[contributionCypherStatement] = true
@@ -167,7 +195,7 @@ func main() {
     }
 
     if (currentFile.Id != currentFile.ParentId) {
-      fmt.Println("CREATE (" + currentFile.Id + ")-[:IN_FOLDER]->(" + currentFile.ParentId + ")")
+      fmt.Println(folderStructureToCypher(currentFile))
     }
   }
 
