@@ -18,6 +18,11 @@ type fileContributer struct {
   // commits []string
   // commitCount int
 }
+type fileContribution struct {
+  Name string
+  Email string
+  Commit string
+}
 type fileInfo struct {
   Name string
   Size int64
@@ -28,7 +33,7 @@ type fileInfo struct {
   ModTime int64
   ParentName string
   ParentId string
-  Contributers []string
+  Contributions []fileContribution
   CommitCount int
 }
 var nodes []fileInfo
@@ -73,14 +78,27 @@ func _prototype_getGitLog(path string) fileContributer {
 
 // getGitLog returns the list of contributers of a given path
 // TODO: return array of fileContributer instead
-func getGitLog(path string) []string {
-  args :=  []string{"log", "--format=%an", path}
+func getGitLog(path string) []fileContribution {
+  args :=  []string{"log", "--format=%an||%ae||%f", path}
   cmd := exec.Command("git", args...)
   out, errCmd := cmd.CombinedOutput()
   if errCmd != nil {
     log.Fatalf("cmd.Run() failed with %s\n", errCmd)
   }
-  return strings.Split(string(out), "\n")
+  contributionLog := strings.Split(string(out), "\n")
+  fileContribs := []fileContribution{}
+  for _, contribution := range contributionLog {
+    splitLog := strings.Split(contribution, "||")
+    if (len(splitLog) > 1) {
+      fileContribs = append(fileContribs, fileContribution{
+        Name: splitLog[0],
+        Email: splitLog[1],
+        Commit: splitLog[2],
+      })
+    }
+  }
+  fmt.Println(fileContribs)
+  return fileContribs
 }
 
 // getUniqueNameString creates a unique string for a file based on its nested depth in the folder and its name
@@ -136,8 +154,8 @@ func fileInfoToCypher(currentFile fileInfo, label string) string {
 }
 
 // contributerToCypher returns a cypher statement to create node for a given contributer
-func contributerToCypher(contributerId, contributer string) string {
-  return ("CREATE (" + contributerId + ":" + "person" + " { name: '" + contributer + "' })")
+func contributerToCypher(contributerId, contributerName, contributerEmail string) string {
+  return ("CREATE (" + contributerId + ":" + "person" + " { name: '" + contributerName + "', email: '" + contributerEmail + "' })")
 }
 
 // contributionToCypher returns to cypher statement to create a relationship between a file and a contributer
@@ -172,7 +190,7 @@ func main() {
           parentDepth = 0
         }
 
-        contributers := getGitLog(path)
+        contributions := getGitLog(path)
 
         nodes = append(nodes, fileInfo{
           Name: fileName,
@@ -184,8 +202,8 @@ func main() {
           ModTime: info.ModTime().Unix(),
           ParentName: pathSegments[parentDepth],
           ParentId : createCypherFriendlyVarName(pathSegments[parentDepth], parentDepth),
-          Contributers: contributers,
-          CommitCount: len(contributers),
+          Contributions: contributions,
+          CommitCount: len(contributions),
         })
         processedFiles[uniqueNameString] = true
       }
@@ -198,6 +216,8 @@ func main() {
   verboseLog("------------------------------------------------------------------------")
   verboseLog("")
 
+  // nodes = []fileInfo{}
+
   for _, currentFile := range nodes {
     label := getLabelForFileNode(currentFile)
 
@@ -207,18 +227,16 @@ func main() {
     }
 
     if (label == "file") {
-      for _, contributer := range currentFile.Contributers {
-        if (len(contributer) > 1) {
-          contributerId := createCypherFriendlyVarName(contributer, 0)
-          if (!processedContributers[contributer]) {
-            fmt.Println(contributerToCypher(contributerId, contributer))
-            processedContributers[contributer] = true
-          }
-          contributionCypherStatement := contributionToCypher(currentFile.Id, contributerId)
-          if (!processedContributions[contributionCypherStatement]) {
-            fmt.Println(contributionCypherStatement)
-            processedContributions[contributionCypherStatement] = true
-          }
+      for _, contribution := range currentFile.Contributions {
+        contributerId := createCypherFriendlyVarName(contribution.Name, 0)
+        if (!processedContributers[contribution.Name]) {
+          fmt.Println(contributerToCypher(contributerId, contribution.Name, contribution.Email))
+          processedContributers[contribution.Name] = true
+        }
+        contributionCypherStatement := contributionToCypher(currentFile.Id, contributerId)
+        if (!processedContributions[contributionCypherStatement]) {
+          fmt.Println(contributionCypherStatement)
+          processedContributions[contributionCypherStatement] = true
         }
       }
     }
