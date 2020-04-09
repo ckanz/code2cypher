@@ -63,9 +63,32 @@ func getGitLog(path string) []fileContribution {
   return fileContribs
 }
 
+// getGitRemoteUrl returns the web url for a repository
+func getGitRemoteUrl() string {
+  args :=  []string{"config", "--get", "remote.origin.url"}
+  cmd := exec.Command("git", args...)
+  out, errCmd := cmd.CombinedOutput()
+  if errCmd != nil {
+    log.Fatalf("cmd.Run() failed with %s\n", errCmd)
+  }
+  url := string(out)
+  url = strings.Replace(url, "git@github.com:", "https://github.com/", -1)
+  url = strings.Replace(url, ".git", "/", -1)
+  url = strings.Replace(url, "\n", "", -1)
+  return url
+}
+
+// buildGitHubUrl creates a url for a given file to find it on GitHub
+func buildGitHubUrl(remoteUrl string, path string, isDir bool) string {
+  middlePart := "blob/master/"
+  if (isDir) {
+    middlePart = "tree/master/"
+  }
+  return remoteUrl + middlePart + path
+}
+
 // includePath evaluates whether to include a path in the resulting graph or not
 func includePath(path string) bool {
   // TODO: should be a list coming from .gitignore
   return !strings.HasPrefix(path, ".") && !strings.HasPrefix(path, "node_modules")
 }
-

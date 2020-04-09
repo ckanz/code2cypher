@@ -12,6 +12,7 @@ import (
 
 type fileInfo struct {
   Name string
+  Url string
   Size int64
   Level int
   IsDir bool
@@ -29,6 +30,7 @@ var processedNodes = make(map[string]bool)
 var processedContributers = make(map[string]bool)
 var processedContributions = make(map[string]bool)
 var verbose bool
+var gitRepoUrl string
 
 // initFlags parses the command line flags
 func initFlags() {
@@ -60,6 +62,7 @@ func verboseLog(toLog string) {
 
 func init() {
   initFlags()
+  gitRepoUrl = getGitRemoteUrl()
 }
 
 func main() {
@@ -86,6 +89,7 @@ func main() {
 
         nodes = append(nodes, fileInfo{
           Name: fileName,
+          Url: buildGitHubUrl(gitRepoUrl, path, info.IsDir()),
           Size: info.Size(),
           Level: fileDepth,
           Extension: getFileExtension(info),

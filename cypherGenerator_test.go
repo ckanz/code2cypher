@@ -30,17 +30,17 @@ func TestFileInfoToCypher(t *testing.T) {
     {
       fileInfo { Id: "fileId", Name: "someDir", IsDir: true, },
       "testLabel",
-      "CREATE (fileId:testLabel { name: 'someDir' })",
+      "CREATE (fileId:testLabel { name: 'someDir', url: '' })",
     },
     {
-      fileInfo { Name: "someDir", IsDir: true, },
+      fileInfo { Name: "someDir", IsDir: true, Url: "https://github.com/someName/someRepo/tree/master/someDir" },
       "testLabel",
-      "CREATE (:testLabel { name: 'someDir' })",
+      "CREATE (:testLabel { name: 'someDir', url: 'https://github.com/someName/someRepo/tree/master/someDir' })",
     },
     {
       fileInfo { Id: "fileId", Name: "someFile", IsDir: false, Size: 42, CommitCount: 23, ModTime: 111222333, Extension: "go" },
       "testLabel",
-      "CREATE (fileId:testLabel { name: 'someFile', size: 42, commitCount: 23, lastModifiedDateTime: datetime({ epochseconds: 111222333 }), lastModifiedTimestamp: 111222333, extension: 'go' })",
+      "CREATE (fileId:testLabel { name: 'someFile', url: '', size: 42, commitCount: 23, lastModifiedDateTime: datetime({ epochseconds: 111222333 }), lastModifiedTimestamp: 111222333, extension: 'go' })",
     },
   }
   for _, table := range testTables {
