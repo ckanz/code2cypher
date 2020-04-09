@@ -8,7 +8,6 @@ import (
   "log"
   "strings"
   "strconv"
-  "regexp"
 )
 
 type fileInfo struct {
@@ -30,7 +29,6 @@ var processedNodes = make(map[string]bool)
 var processedContributers = make(map[string]bool)
 var processedContributions = make(map[string]bool)
 var verbose bool
-var reStr = regexp.MustCompile(`\W`)
 
 // initFlags parses the command line flags
 func initFlags() {

@@ -3,7 +3,10 @@ package main
 import (
   "strings"
   "strconv"
+  "regexp"
 )
+
+var reStr = regexp.MustCompile(`\W`)
 
 // createCypherFriendlyVarName produces a string for a filename and its nested depth that can be safely used in cypher as a variable name
 func createCypherFriendlyVarName(s string, i int) string {
