@@ -141,14 +141,16 @@ func getLabelForFileNode(currentFile fileInfo) string {
 
 // fileInfoToCypher returns a cypher statement to create a node for a given file
 func fileInfoToCypher(currentFile fileInfo, label string) string {
-  properties := (
-    "{ name: '" + currentFile.Name + "', " +
-    "size: " + strconv.FormatInt(currentFile.Size, 10) + ", " +
+  properties := ("{ name: '" + currentFile.Name + "'" )
+
+  if (!currentFile.IsDir) {
+    properties += (", " + "size: " + strconv.FormatInt(currentFile.Size, 10) + ", " +
     "commitCount: " + strconv.Itoa(currentFile.CommitCount) + ", " +
     "lastModifiedDateTime: datetime({ epochseconds: " + strconv.FormatInt(currentFile.ModTime, 10) + " }), " +
     "lastModifiedTimestamp: " + strconv.FormatInt(currentFile.ModTime, 10) + ", " +
-    "extension: '" + currentFile.Extension + "' " +
-    "}")
+    "extension: '" + currentFile.Extension + "'")
+  }
+  properties += " }"
   return "CREATE (" + currentFile.Id + ":" + label + " " + properties + ")"
 }
 
