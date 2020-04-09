@@ -112,8 +112,6 @@ func main() {
   verboseLog("------------------------------------------------------------------------")
   verboseLog("")
 
-  // nodes = []fileInfo{}
-
   for _, currentFile := range nodes {
     label := getLabelForFileNode(currentFile)
 
@@ -126,9 +124,11 @@ func main() {
       for _, contribution := range currentFile.Contributions {
         contributerId := createCypherFriendlyVarName(contribution.Name, 0)
         if (!processedContributers[contribution.Name]) {
+          // TODO: add 'totalCommits' prop to contributer nodes
           fmt.Println(contributerToCypher(contributerId, contribution.Name, contribution.Email))
           processedContributers[contribution.Name] = true
         }
+        // TODO: add array of commit messages as 'commits' prop and length of the array as 'commitCount' prop to the relationship
         contributionCypherStatement := contributionToCypher(currentFile.Id, contributerId)
         if (!processedContributions[contributionCypherStatement]) {
           fmt.Println(contributionCypherStatement)

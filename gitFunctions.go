@@ -10,8 +10,7 @@ import (
 type fileContributer struct {
   Name string
   Email string
-  // commits []string
-  // commitCount int
+  totalCommits int
 }
 type fileContribution struct {
   Name string
