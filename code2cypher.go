@@ -30,11 +30,13 @@ var processedNodes = make(map[string]bool)
 var processedContributers = make(map[string]bool)
 var processedContributions = make(map[string]bool)
 var verbose bool
+var repoPath string
 var gitRepoUrl string
 
 // initFlags parses the command line flags
 func initFlags() {
   flag.BoolVar(&verbose, "verbose", false, "log iteration through file tree")
+  flag.StringVar(&repoPath, "path", ".", "the full path of the repository")
   flag.Parse()
 }
 
@@ -62,11 +64,11 @@ func verboseLog(toLog string) {
 
 func init() {
   initFlags()
-  gitRepoUrl = getGitRemoteUrl()
+  gitRepoUrl = getGitRemoteUrl(repoPath)
 }
 
 func main() {
-  err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+  err := filepath.Walk(repoPath, func(path string, info os.FileInfo, err error) error {
     if err != nil {
       return err
     }
@@ -85,7 +87,7 @@ func main() {
           parentDepth = 0
         }
 
-        contributions := getGitLog(path)
+        contributions := getGitLog(path, repoPath)
 
         nodes = append(nodes, fileInfo{
           Name: fileName,

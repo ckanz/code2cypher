@@ -40,9 +40,10 @@ func _prototype_getGitLog(path string) fileContributer {
 
 // getGitLog returns the list of contributers of a given path
 // TODO: return array of fileContributer instead
-func getGitLog(path string) []fileContribution {
+func getGitLog(path string, repoPath string) []fileContribution {
   args :=  []string{"log", "--format=%an||%ae||%f", path}
   cmd := exec.Command("git", args...)
+  cmd.Dir = repoPath
   out, errCmd := cmd.CombinedOutput()
   if errCmd != nil {
     log.Fatalf("cmd.Run() failed with %s\n", errCmd)
@@ -63,9 +64,10 @@ func getGitLog(path string) []fileContribution {
 }
 
 // getGitRemoteUrl returns the web url for a repository
-func getGitRemoteUrl() string {
+func getGitRemoteUrl(repoPath string) string {
   args :=  []string{"config", "--get", "remote.origin.url"}
   cmd := exec.Command("git", args...)
+  cmd.Dir = repoPath
   out, errCmd := cmd.CombinedOutput()
   if errCmd != nil {
     log.Fatalf("cmd.Run() failed with %s\n", errCmd)
