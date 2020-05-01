@@ -62,12 +62,11 @@ func verboseLog(toLog string) {
   }
 }
 
-func init() {
+func main() {
+
   initFlags()
   gitRepoUrl = getGitRemoteUrl(repoPath)
-}
 
-func main() {
   err := filepath.Walk(repoPath, func(path string, info os.FileInfo, err error) error {
     if err != nil {
       return err
