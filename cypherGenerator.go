@@ -37,20 +37,20 @@ func fileInfoToCypher(currentFile fileInfo, label string) string {
     "extension: '" + currentFile.Extension + "'")
   }
   properties += " }"
-  return "CREATE (" + currentFile.Id + ":" + label + " " + properties + ");"
+  return "CREATE (" + currentFile.Id + ":" + label + " " + properties + ")"
 }
 
 // contributerToCypher returns a cypher statement to create node for a given contributer
 func contributerToCypher(contributerId, contributerName, contributerEmail string) string {
-  return ("CREATE (" + contributerId + ":" + "person" + " { name: '" + contributerName + "', email: '" + contributerEmail + "' });")
+  return ("CREATE (" + contributerId + ":" + "person" + " { name: '" + contributerName + "', email: '" + contributerEmail + "' })")
 }
 
 // contributionToCypher returns to cypher statement to create a relationship between a file and a contributer
 func contributionToCypher(fileId, contributerId string) string {
-  return "CREATE (" + fileId + ")<-[:EDITED]-(" + contributerId + ");"
+  return "CREATE (" + fileId + ")<-[:EDITED]-(" + contributerId + ")"
 }
 
 // folderStructureToCypher returns to cypher statement to create a relationship between a file and its parent folder
 func folderStructureToCypher(currentFile fileInfo) string {
-  return "CREATE (" + currentFile.Id + ")-[:IN_FOLDER]->(" + currentFile.ParentId + ");"
+  return "CREATE (" + currentFile.Id + ")-[:IN_FOLDER]->(" + currentFile.ParentId + ")"
 }

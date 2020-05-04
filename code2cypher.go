@@ -142,6 +142,7 @@ func main() {
       fmt.Println(folderStructureToCypher(currentFile))
     }
   }
+  fmt.Println(";")
 
   if err != nil {
     log.Println(err)

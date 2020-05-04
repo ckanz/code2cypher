@@ -5,4 +5,4 @@ echo "Adding package to /user/local/bin/ ..."
 sudo cp code2cypher /usr/local/bin/
 
 echo "Running tests..."
-go test -v
+go test -v -cover
