@@ -77,16 +77,18 @@ func TestContributionToCypher(t *testing.T) {
   testTables := []struct {
     fileId string
     contributerId string
+    contributionId string
     cypherResult string
   }{
     {
       "someFile_java",
       "William_T__Riker",
-      "CREATE (someFile_java)<-[:EDITED]-(William_T__Riker)",
+      "someFile_java__William_T__Riker",
+      "CREATE (someFile_java)<-[someFile_java__William_T__Riker:EDITED]-(William_T__Riker)",
     },
   }
   for _, table := range testTables {
-    result := contributionToCypher(table.fileId, table.contributerId)
+    result := contributionToCypher(table.fileId, table.contributerId, table.contributionId)
     if (result != table.cypherResult) {
       t.Errorf("contributionToCypher was incorrect, got: %s, want: %s.", result, table.cypherResult)
     }

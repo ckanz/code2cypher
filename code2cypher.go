@@ -27,8 +27,8 @@ type fileInfo struct {
 var nodes []fileInfo
 var processedFiles = make(map[string]bool)
 var processedNodes = make(map[string]bool)
-var processedContributers = make(map[string]bool)
-var processedContributions = make(map[string]bool)
+var processedContributers = make(map[string]int)
+var processedContributions = make(map[string]int)
 var verbose bool
 var repoPath string
 var gitRepoUrl string
@@ -124,16 +124,23 @@ func main() {
     if (label == "file") {
       for _, contribution := range currentFile.Contributions {
         contributerId := createCypherFriendlyVarName(contribution.Name, 0)
-        if (!processedContributers[contribution.Name]) {
+        if (processedContributers[contribution.Name] < 1) {
           // TODO: add 'totalCommits' prop to contributer nodes
           fmt.Println(contributerToCypher(contributerId, contribution.Name, contribution.Email))
-          processedContributers[contribution.Name] = true
+          processedContributers[contribution.Name] = 1
+        } else {
+          processedContributers[contribution.Name] += 1
+          fmt.Println(contributerToCypherUpdate(contributerId, contribution.Name, contribution.Email, processedContributers[contribution.Name]))
         }
         // TODO: add array of commit messages as 'commits' prop and length of the array as 'commitCount' prop to the relationship
-        contributionCypherStatement := contributionToCypher(currentFile.Id, contributerId)
-        if (!processedContributions[contributionCypherStatement]) {
+        contributionId := currentFile.Id + "__" + contributerId
+        contributionCypherStatement := contributionToCypher(currentFile.Id, contributerId, contributionId)
+        if (processedContributions[contributionCypherStatement] < 1) {
           fmt.Println(contributionCypherStatement)
-          processedContributions[contributionCypherStatement] = true
+          processedContributions[contributionCypherStatement] = 1
+        } else {
+          processedContributions[contributionCypherStatement] += 1
+          fmt.Println(contributionToCypherUpdate(contributionId, processedContributions[contributionCypherStatement]))
         }
       }
     }
