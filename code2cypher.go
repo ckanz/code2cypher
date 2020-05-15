@@ -71,8 +71,8 @@ func main() {
     if err != nil {
       return err
     }
-
-    if (includePath(path)) {
+    path = path[len(repoPath):len(path)]
+    if (len(path) > 0 && includePath(path)) {
       verboseLog("Fullpath: " + path)
 
       pathSegments := strings.Split(path, "/")
