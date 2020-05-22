@@ -8,169 +8,148 @@ import (
   "log"
   "strings"
   "strconv"
-  "os/exec"
-  "regexp"
 )
 
-type node struct {
+type fileInfo struct {
   Name string
-  Size string
+  Url string
+  Size int64
   Level int
   IsDir bool
   Id string
   Extension string
-  ModTime string
+  ModTime int64
   ParentName string
   ParentId string
-  Contributers []string
+  Contributions []fileContribution
+  CommitCount int
 }
-var nodes []node
+var nodes []fileInfo
+var processedFiles = make(map[string]bool)
 var processedNodes = make(map[string]bool)
-var b strings.Builder
+var processedContributers = make(map[string]int)
+var processedContributions = make(map[string]int)
+var verbose bool
+var repoPath string
+var gitRepoUrl string
 
-// from https://yourbasic.org/golang/find-search-contains-slice/ by Stefan Nilsson
-// Contains tells whether a contains x.
-func Contains(a []string, x string) bool {
-  for _, n := range a {
-    if x == n {
-      return true
-    }
+// initFlags parses the command line flags
+func initFlags() {
+  flag.BoolVar(&verbose, "verbose", false, "log iteration through file tree")
+  flag.StringVar(&repoPath, "path", ".", "the full path of the repository")
+  flag.Parse()
+}
+
+// getUniqueNameString creates a unique string for a file based on its nested depth in the folder and its name
+// TODO: instead of depth, modified timestamp might be a better value to create unique variable names with
+func getUniqueNameString(index int, element string) string {
+  return strconv.Itoa(index) + "-" + element
+}
+
+// getFileExtension returns the extension for a given file's full name
+func getFileExtension (info os.FileInfo) string {
+  if (info.IsDir() == false) {
+    stringSegments := strings.Split(info.Name(), ".")
+    return stringSegments[len(stringSegments) - 1]
   }
-  return false
+  return ""
+}
+
+// verboseLog writes a string to stdOut if the verbose flag is set
+func verboseLog(toLog string) {
+  if (verbose) {
+    fmt.Println(toLog)
+  }
 }
 
 func main() {
-  verbose := flag.Bool("verbose", false, "log iteration through file tree")
-  flag.Parse()
 
-  reStr := regexp.MustCompile(`\W`)
+  initFlags()
+  gitRepoUrl = getGitRemoteUrl(repoPath)
 
-  err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+  err := filepath.Walk(repoPath, func(path string, info os.FileInfo, err error) error {
     if err != nil {
       return err
     }
-
-    if (!strings.HasPrefix(path, ".") && !strings.HasPrefix(path, "node_modules")) {
-
-      if (*verbose) {
-        fmt.Println("Fullpath: " + path)
-      }
-
-      args :=  []string{"log", "--format=\"%an\"", path}
-      cmd := exec.Command("git", args...)
-      out, errCmd := cmd.CombinedOutput()
-      if errCmd != nil {
-        log.Fatalf("cmd.Run() failed with %s\n", errCmd)
-      }
-      gitlog := string(out)
-      contribs := strings.Split(gitlog, "\"")
-      if (len(contribs) > 0 && *verbose) {
-        fmt.Println(contribs)
-      }
+    path = path[len(repoPath):len(path)]
+    if (len(path) > 0 && includePath(path)) {
+      verboseLog("Fullpath: " + path)
 
       pathSegments := strings.Split(path, "/")
-      for i, element := range pathSegments {
+      fileDepth := len(pathSegments) - 1
+      fileName := info.Name()
+      uniqueNameString := getUniqueNameString(fileDepth, fileName)
 
-        if (*verbose) {
-          fmt.Println("Pathsegment: " + element)
-          fmt.Println(info.IsDir())
+      if (processedFiles[uniqueNameString] != true) {
+        parentDepth := fileDepth - 1
+        if (parentDepth < 0) {
+          parentDepth = 0
         }
 
-        fmt.Fprintf(&b, "%d-", i)
-        if (processedNodes[b.String() + element] != true) {
-          ext := ""
-          pre := "a_"
-          id := strings.Replace(element, ".", "_", -1)
-          id = pre + id
-          id = reStr.ReplaceAllString(id, "$1")
-          id += strconv.Itoa(i)
-          if (info.IsDir() == false) {
-            groups := strings.Split(element, ".")
-            ext = groups[len(groups) - 1]
-          }
-          parentIndex := i - 1
-          if (parentIndex < 0) {
-            parentIndex = 0
-          }
+        contributions := getGitLog(path, repoPath)
 
-          ParentId := strings.Replace(pathSegments[parentIndex], ".", "_", -1)
-          ParentId = pre + ParentId
-          ParentId = reStr.ReplaceAllString(ParentId, "$1")
-          ParentId += strconv.Itoa(parentIndex)
-
-          if (ext != "DS_Store") {
-            myNode := node{
-              Name: element,
-              Size: strconv.FormatInt(info.Size(), 10),
-              Level: i,
-              Extension: ext,
-              Id: id,
-              IsDir: info.IsDir(),
-              ModTime: info.ModTime().String(),
-              ParentName: pathSegments[parentIndex],
-              ParentId : ParentId,
-              Contributers: contribs,
-            }
-            if (*verbose) {
-              fmt.Println(myNode)
-            }
-
-            nodes = append(nodes, myNode)
-
-            processedNodes[b.String() + element] = true
-          }
-        }
-        b.Reset()
+        nodes = append(nodes, fileInfo{
+          Name: fileName,
+          Url: buildGitHubUrl(gitRepoUrl, path, info.IsDir()),
+          Size: info.Size(),
+          Level: fileDepth,
+          Extension: getFileExtension(info),
+          Id: createCypherFriendlyVarName(fileName, fileDepth),
+          IsDir: info.IsDir(),
+          ModTime: info.ModTime().Unix(),
+          ParentName: pathSegments[parentDepth],
+          ParentId : createCypherFriendlyVarName(pathSegments[parentDepth], parentDepth),
+          Contributions: contributions,
+          CommitCount: len(contributions),
+        })
+        processedFiles[uniqueNameString] = true
       }
     }
 
     return nil
   })
 
-  if (*verbose) {
-    fmt.Println("")
-    fmt.Println("------------------------------------------------------------------------")
-    fmt.Println("")
-  }
+  verboseLog("")
+  verboseLog("------------------------------------------------------------------------")
+  verboseLog("")
 
+  for _, currentFile := range nodes {
+    label := getLabelForFileNode(currentFile)
 
-  processedNodes := []string{}
-  processedContributers := []string{}
-  processedContributions := []string{}
-  for i := range nodes {
-    currentFile := nodes[i]
-    if (currentFile.Name != "") {
-      label := "directory"
-      if (currentFile.IsDir != true) {
-        label = "file"
-      }
+    if (!processedNodes[currentFile.Id]) {
+      fmt.Println(fileInfoToCypher(currentFile, label))
+      processedNodes[currentFile.Id] = true
+    }
 
-      if (!Contains(processedNodes, currentFile.Id)) {
-        fmt.Println("CREATE (" + currentFile.Id + ":" + label + " { name: '" + currentFile.Name + "', parentName: '" + currentFile.ParentName + "', isDir: " + strconv.FormatBool(currentFile.IsDir) + ", size: " + currentFile.Size + " , time: '" + currentFile.ModTime + "', extension: '" +  currentFile.Extension + "' })")
-        processedNodes = append(processedNodes, currentFile.Id)
-      }
-
-      for _, c := range currentFile.Contributers {
-        if (len(c) > 3) {
-          contributerId := "c_" + strings.Replace(c, " ", "", -1)
-          contributerId = reStr.ReplaceAllString(contributerId, "$1")
-          if (!Contains(processedContributers, c)) {
-            fmt.Println("CREATE (" + contributerId + ":" + "person" + " { name: '" + c + "' })")
-            processedContributers = append(processedContributers, c)
-          }
-          contributionCypherStatement := "CREATE (" + currentFile.Id + ")<-[:EDITED]-(" + contributerId + ")"
-          if (!Contains(processedContributions, contributionCypherStatement)) {
-            processedContributions = append(processedContributions, contributionCypherStatement)
-            fmt.Println(contributionCypherStatement)
-          }
+    if (label == "file") {
+      for _, contribution := range currentFile.Contributions {
+        contributerId := createCypherFriendlyVarName(contribution.Name, 0)
+        if (processedContributers[contribution.Name] < 1) {
+          // TODO: add 'totalCommits' prop to contributer nodes
+          fmt.Println(contributerToCypher(contributerId, contribution.Name, contribution.Email))
+          processedContributers[contribution.Name] = 1
+        } else {
+          processedContributers[contribution.Name] += 1
+          fmt.Println(contributerToCypherUpdate(contributerId, contribution.Name, contribution.Email, processedContributers[contribution.Name]))
+        }
+        // TODO: add array of commit messages as 'commits' prop and length of the array as 'commitCount' prop to the relationship
+        contributionId := currentFile.Id + "__" + contributerId
+        contributionCypherStatement := contributionToCypher(currentFile.Id, contributerId, contributionId)
+        if (processedContributions[contributionCypherStatement] < 1) {
+          fmt.Println(contributionCypherStatement)
+          processedContributions[contributionCypherStatement] = 1
+        } else {
+          processedContributions[contributionCypherStatement] += 1
+          fmt.Println(contributionToCypherUpdate(contributionId, processedContributions[contributionCypherStatement]))
         }
       }
+    }
 
-      if (currentFile.Id != currentFile.ParentId) {
-        fmt.Println("CREATE (" + currentFile.Id + ")-[:IN_FOLDER]->(" + currentFile.ParentId + ")")
-      }
+    if (currentFile.Id != currentFile.ParentId) {
+      fmt.Println(folderStructureToCypher(currentFile))
     }
   }
+  fmt.Println(";")
 
   if err != nil {
     log.Println(err)
