@@ -12,7 +12,7 @@ This [Go](https://golang.org/) package creates a list of [Cypher](https://neo4j.
 
 To turn a GIT repository into a graph, follow these steps:
 
-- build the executable bu running `go build` in the root of this project
+- build the executable by running `go build` in the root of this project
 - place the executable in the root folder of your repository
 - execute the file (the Cypher statements are written to StdOut)
 - pipe the Cypher statements to [Cypher Shell](https://neo4j.com/docs/operations-manual/current/tools/cypher-shell/) or into a .cypher file you can import to [Neo4j Desktop](https://neo4j.com/developer/neo4j-desktop/)
