@@ -65,19 +65,24 @@ func verboseLog(toLog string) {
 func main() {
 
   initFlags()
+  verboseLog("repoPath: " + repoPath)
   gitRepoUrl = getGitRemoteUrl(repoPath)
+  verboseLog("gitRepoUrl: " + gitRepoUrl)
 
   err := filepath.Walk(repoPath, func(path string, info os.FileInfo, err error) error {
     if err != nil {
       return err
     }
-    path = path[len(repoPath):len(path)]
+    if repoPath != "." {
+      path = path[len(repoPath):len(path)]
+    }
     if (len(path) > 0 && includePath(path)) {
-      verboseLog("Fullpath: " + path)
+      verboseLog("path: " + path)
 
       pathSegments := strings.Split(path, "/")
       fileDepth := len(pathSegments) - 1
       fileName := info.Name()
+      verboseLog("fileName: " + fileName)
       uniqueNameString := getUniqueNameString(fileDepth, fileName)
 
       if (processedFiles[uniqueNameString] != true) {
