@@ -42,17 +42,17 @@ func fileInfoToCypher(currentFile fileInfo, label string) string {
 
 // contributerToCypher returns a cypher statement to create node for a given contributer
 func contributerToCypher(contributerId, contributerName, contributerEmail string) string {
-  return ("CREATE (" + contributerId + ":" + "person" + " { name: '" + contributerName + "', email: '" + contributerEmail + "' })")
+  return ("MERGE (" + contributerId + ":" + "person" + " { name: '" + contributerName + "', email: '" + contributerEmail + "' })")
 }
 
 // contributerToCypherUpdate returns a cypher statement to update a given contributer's commitCount
-func contributerToCypherUpdate(contributerId string, commitCount int) string {
-  return ("SET " + contributerId + ".commitCount = " + strconv.Itoa(commitCount))
+func contributerToCypherUpdate(contributerEmail string, commitCount int) string {
+  return ("MATCH (c:person { email: '" + contributerEmail + "' }) SET c.commitCount = " + strconv.Itoa(commitCount))
 }
 
 // contributionToCypher returns to cypher statement to create a relationship between a file and a contributer
 func contributionToCypher(fileId, contributerId string, contributionId string) string {
-  return "CREATE (" + fileId + ")<-[" + contributionId + ":EDITED]-(" + contributerId + ")"
+  return "CREATE (" + fileId + ")<-[" + contributionId + ":EDITED { _tempId: '" + contributionId +"' }]-(" + contributerId + ")"
 }
 
 // contributionToCypher returns to cypher statement to create a relationship between a file and a contributer
@@ -63,7 +63,9 @@ func commitToCypher(fileId, contributerId string, contribution fileContribution)
 
 // contributionToCypherUpdate returns a cypher statement to update a given contribution's commitCount
 func contributionToCypherUpdate(contributionId string, commitCount int) string {
-  return "SET " + contributionId + ".commitCount = " + strconv.Itoa(commitCount)
+  return "MATCH (c:person)-[e:EDITED { _tempId: '" + contributionId + "' }]->(f:file)" +
+  "SET e.commitCount = " + strconv.Itoa(commitCount) +
+  "REMOVE e._tempId"
 }
 
 // folderStructureToCypher returns to cypher statement to create a relationship between a file and its parent folder

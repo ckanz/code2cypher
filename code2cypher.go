@@ -27,8 +27,8 @@ type fileInfo struct {
 var nodes []fileInfo
 var processedFiles = make(map[string]bool)
 var processedNodes = make(map[string]bool)
-var processedContributers = make(map[string]int)
-var processedContributions = make(map[string]int)
+var processedContributersSum = make(map[string]int)
+var processedContributionsSum = make(map[string]int)
 var verbose bool
 var simplified bool
 var repoPath string
@@ -121,6 +121,9 @@ func main() {
   verboseLog("")
 
   for _, currentFile := range nodes {
+    var processedContributers = make(map[string]int)
+    var processedContributions = make(map[string]int)
+    fmt.Println(":BEGIN")
     label := getLabelForFileNode(currentFile)
 
     if (!processedNodes[currentFile.Id]) {
@@ -128,41 +131,51 @@ func main() {
       processedNodes[currentFile.Id] = true
     }
 
+    if (currentFile.Id != currentFile.ParentId) {
+      fmt.Println(folderStructureToCypher(currentFile))
+    }
+
     if (label == "file") {
       for _, contribution := range currentFile.Contributions {
         contributerId := createCypherFriendlyVarName(contribution.Name, 0)
-        if (processedContributers[contributerId] < 1) {
+        contributerEmail := contribution.Email
+        if (processedContributers[contributerEmail] < 1) {
           fmt.Println(contributerToCypher(contributerId, contribution.Name, contribution.Email))
-          processedContributers[contributerId] = 0
+          processedContributers[contributerEmail] = 0
         }
-        processedContributers[contributerId] += 1
+        processedContributers[contributerEmail] += 1
+        processedContributersSum[contributerEmail] += 1
 
         contributionId := currentFile.Id + "__" + contributerId
-        contributionCypherStatement := contributionToCypher(currentFile.Id, contributerId, contributionId)
         if (processedContributions[contributionId] < 1) {
-          fmt.Println(contributionCypherStatement)
+          fmt.Println(contributionToCypher(currentFile.Id, contributerId, contributionId))
           processedContributions[contributionId] = 0
         }
         if (simplified != true) {
           fmt.Println(commitToCypher(currentFile.Id, contributerId, contribution))
         }
         processedContributions[contributionId] += 1
+        processedContributionsSum[contributionId] += 1
       }
     }
 
-    if (currentFile.Id != currentFile.ParentId) {
-      fmt.Println(folderStructureToCypher(currentFile))
-    }
+    fmt.Println(";")
+    fmt.Println(":COMMIT")
   }
 
-  for contributerId, contributionCount := range processedContributers {
-    fmt.Println(contributerToCypherUpdate(contributerId, contributionCount))
+  for contributerEmail, contributionCount := range processedContributersSum {
+    fmt.Println(":BEGIN")
+    fmt.Println(contributerToCypherUpdate(contributerEmail, contributionCount))
+    fmt.Println(";")
+    fmt.Println(":COMMIT")
   }
-  for contributionId, commitCount := range processedContributions {
+  for contributionId, commitCount := range processedContributionsSum {
+    fmt.Println(":BEGIN")
     fmt.Println(contributionToCypherUpdate(contributionId, commitCount))
+    fmt.Println(";")
+    fmt.Println(":COMMIT")
   }
 
-  fmt.Println(";")
 
   if err != nil {
     log.Println(err)
