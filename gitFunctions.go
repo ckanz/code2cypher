@@ -16,6 +16,9 @@ type fileContribution struct {
   Name string
   Email string
   Commit string
+  AbbreviatedHash string
+  Hash string
+  DateTime string
 }
 
 func _prototype_getGitLog(path string) fileContributer {
@@ -41,7 +44,7 @@ func _prototype_getGitLog(path string) fileContributer {
 // getGitLog returns the list of contributers of a given path
 // TODO: return array of fileContributer instead
 func getGitLog(path string, repoPath string) []fileContribution {
-  args :=  []string{"log", "--format=%an||%ae||%f", path}
+  args :=  []string{"log", "--format=%an||%ae||%f||%h||%H||%aI", path}
   cmd := exec.Command("git", args...)
   cmd.Dir = repoPath
   out, errCmd := cmd.CombinedOutput()
@@ -57,6 +60,9 @@ func getGitLog(path string, repoPath string) []fileContribution {
         Name: splitLog[0],
         Email: splitLog[1],
         Commit: splitLog[2],
+        AbbreviatedHash: splitLog[3],
+        Hash: splitLog[4],
+        DateTime: splitLog[5],
       })
     }
   }

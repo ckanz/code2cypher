@@ -62,7 +62,7 @@ func TestContributerToCypher(t *testing.T) {
       "someId",
       "William T. Riker",
       "wt.riker@starfleet.gov",
-      "CREATE (someId:person { commitCount: 0, name: 'William T. Riker', email: 'wt.riker@starfleet.gov' })",
+      "CREATE (someId:person { name: 'William T. Riker', email: 'wt.riker@starfleet.gov' })",
     },
   }
   for _, table := range testTables {
@@ -84,7 +84,7 @@ func TestContributionToCypher(t *testing.T) {
       "someFile_java",
       "William_T__Riker",
       "someFile_java__William_T__Riker",
-      "CREATE (someFile_java)<-[someFile_java__William_T__Riker:EDITED { commitCount: 0, commitMessages: [] }]-(William_T__Riker)",
+      "CREATE (someFile_java)<-[someFile_java__William_T__Riker:EDITED]-(William_T__Riker)",
     },
   }
   for _, table := range testTables {
