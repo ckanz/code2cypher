@@ -46,7 +46,7 @@ func contributerToCypher(contributerId, contributerName, contributerEmail string
 }
 
 // contributerToCypherUpdate returns a cypher statement to update a given contributer's commitCount
-func contributerToCypherUpdate(contributerId, contributerName string, contributerEmail string, commitCount int) string {
+func contributerToCypherUpdate(contributerId string, commitCount int) string {
   return ("SET " + contributerId + ".commitCount = " + strconv.Itoa(commitCount))
 }
 
@@ -55,9 +55,15 @@ func contributionToCypher(fileId, contributerId string, contributionId string) s
   return "CREATE (" + fileId + ")<-[" + contributionId + ":EDITED]-(" + contributerId + ")"
 }
 
+// contributionToCypher returns to cypher statement to create a relationship between a file and a contributer
+func commitToCypher(fileId, contributerId string, contribution fileContribution) string {
+  properties := "hash: '" + contribution.Hash + "', abbreviatedHash: '" + contribution.AbbreviatedHash + "', dateTime: datetime('" + contribution.DateTime + "')"
+  return "CREATE (" + fileId + ")<-[:COMMIT { " + properties + " }]-(" + contributerId + ")"
+}
+
 // contributionToCypherUpdate returns a cypher statement to update a given contribution's commitCount
 func contributionToCypherUpdate(contributionId string, commitCount int) string {
-  return ("SET " + contributionId + ".commitCount = " + strconv.Itoa(commitCount))
+  return "SET " + contributionId + ".commitCount = " + strconv.Itoa(commitCount)
 }
 
 // folderStructureToCypher returns to cypher statement to create a relationship between a file and its parent folder

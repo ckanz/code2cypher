@@ -30,12 +30,14 @@ var processedNodes = make(map[string]bool)
 var processedContributers = make(map[string]int)
 var processedContributions = make(map[string]int)
 var verbose bool
+var simplified bool
 var repoPath string
 var gitRepoUrl string
 
 // initFlags parses the command line flags
 func initFlags() {
-  flag.BoolVar(&verbose, "verbose", false, "log iteration through file tree")
+  flag.BoolVar(&verbose, "verbose", false, "logs iteration through file tree to console")
+  flag.BoolVar(&simplified, "simplified", false, "won't create a distinct relationship for each commit when set")
   flag.StringVar(&repoPath, "path", ".", "the full path of the repository")
   flag.Parse()
 }
@@ -129,24 +131,22 @@ func main() {
     if (label == "file") {
       for _, contribution := range currentFile.Contributions {
         contributerId := createCypherFriendlyVarName(contribution.Name, 0)
-        if (processedContributers[contribution.Name] < 1) {
-          // TODO: add 'totalCommits' prop to contributer nodes
+        if (processedContributers[contributerId] < 1) {
           fmt.Println(contributerToCypher(contributerId, contribution.Name, contribution.Email))
-          processedContributers[contribution.Name] = 1
-        } else {
-          processedContributers[contribution.Name] += 1
-          fmt.Println(contributerToCypherUpdate(contributerId, contribution.Name, contribution.Email, processedContributers[contribution.Name]))
+          processedContributers[contributerId] = 0
         }
-        // TODO: add array of commit messages as 'commits' prop and length of the array as 'commitCount' prop to the relationship
+        processedContributers[contributerId] += 1
+
         contributionId := currentFile.Id + "__" + contributerId
         contributionCypherStatement := contributionToCypher(currentFile.Id, contributerId, contributionId)
-        if (processedContributions[contributionCypherStatement] < 1) {
+        if (processedContributions[contributionId] < 1) {
           fmt.Println(contributionCypherStatement)
-          processedContributions[contributionCypherStatement] = 1
-        } else {
-          processedContributions[contributionCypherStatement] += 1
-          fmt.Println(contributionToCypherUpdate(contributionId, processedContributions[contributionCypherStatement]))
+          processedContributions[contributionId] = 0
         }
+        if (simplified != true) {
+          fmt.Println(commitToCypher(currentFile.Id, contributerId, contribution))
+        }
+        processedContributions[contributionId] += 1
       }
     }
 
@@ -154,6 +154,14 @@ func main() {
       fmt.Println(folderStructureToCypher(currentFile))
     }
   }
+
+  for contributerId, contributionCount := range processedContributers {
+    fmt.Println(contributerToCypherUpdate(contributerId, contributionCount))
+  }
+  for contributionId, commitCount := range processedContributions {
+    fmt.Println(contributionToCypherUpdate(contributionId, commitCount))
+  }
+
   fmt.Println(";")
 
   if err != nil {
