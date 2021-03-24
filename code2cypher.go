@@ -131,20 +131,22 @@ func main() {
       processedNodes[currentFile.Id] = true
     }
 
+    /*
+    // TODO: fix
     if (currentFile.Id != currentFile.ParentId) {
       fmt.Println(folderStructureToCypher(currentFile))
     }
+    */
 
     if (label == "file") {
       for _, contribution := range currentFile.Contributions {
         contributerId := createCypherFriendlyVarName(contribution.Name, 0)
-        contributerEmail := contribution.Email
-        if (processedContributers[contributerEmail] < 1) {
+        if (processedContributers[contributerId] < 1) {
           fmt.Println(contributerToCypher(contributerId, contribution.Name, contribution.Email))
-          processedContributers[contributerEmail] = 0
+          processedContributers[contributerId] = 0
         }
-        processedContributers[contributerEmail] += 1
-        processedContributersSum[contributerEmail] += 1
+        processedContributers[contributerId] += 1
+        processedContributersSum[contributerId] += 1
 
         contributionId := currentFile.Id + "__" + contributerId
         if (processedContributions[contributionId] < 1) {
@@ -163,9 +165,9 @@ func main() {
     fmt.Println(":COMMIT")
   }
 
-  for contributerEmail, contributionCount := range processedContributersSum {
+  for contributerId, contributionCount := range processedContributersSum {
     fmt.Println(":BEGIN")
-    fmt.Println(contributerToCypherUpdate(contributerEmail, contributionCount))
+    fmt.Println(contributerToCypherUpdate(contributerId, contributionCount))
     fmt.Println(";")
     fmt.Println(":COMMIT")
   }
