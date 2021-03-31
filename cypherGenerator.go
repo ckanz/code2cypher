@@ -28,6 +28,7 @@ func getLabelForFileNode(currentFile fileInfo) string {
 // fileInfoToCypher returns a cypher statement to create a node for a given file
 func fileInfoToCypher(currentFile fileInfo, label string) string {
   properties := ("{ name: '" + currentFile.Name +
+    "', path: '" + currentFile.Path +
     "', url: '" + currentFile.Url +
     "', _tempId: '" + currentFile.Id + "'")
 
@@ -73,7 +74,7 @@ func contributionToCypherUpdate(contributionId string, commitCount int) string {
 
 // folderStructureToCypher returns to cypher statement to create a relationship between a file and its parent folder
 func folderStructureToCypher(currentFile fileInfo) string {
-  return "Match (a:directory { _tempId: '" + currentFile.ParentId +"' }) Match (b { _tempId: '" + currentFile.Id +"' }) CREATE (b)-[:IN_FOLDER]->(a)"
+  return "Match (a:directory { path: '" + currentFile.ParentPath +"' }) Match (b { path: '" + currentFile.Path +"' }) CREATE (b)-[:IN_FOLDER]->(a)"
 }
 
 // returns a cypher statement that removes a given property from all nodes

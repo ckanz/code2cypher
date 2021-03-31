@@ -7,11 +7,11 @@ import (
   "os"
   "log"
   "strings"
-  "strconv"
 )
 
 type fileInfo struct {
   Name string
+  Path string
   Url string
   Size int64
   Level int
@@ -19,8 +19,7 @@ type fileInfo struct {
   Id string
   Extension string
   ModTime int64
-  ParentName string
-  ParentId string
+  ParentPath string
   Contributions []fileContribution
   CommitCount int
 }
@@ -40,12 +39,6 @@ func initFlags() {
   flag.BoolVar(&simplified, "simplified", false, "won't create a distinct relationship for each commit when set")
   flag.StringVar(&repoPath, "path", ".", "the full path of the repository")
   flag.Parse()
-}
-
-// getUniqueNameString creates a unique string for a file based on its nested depth in the folder and its name
-// TODO: instead of depth, modified timestamp might be a better value to create unique variable names with
-func getUniqueNameString(index int, element string) string {
-  return strconv.Itoa(index) + "-" + element
 }
 
 // getFileExtension returns the extension for a given file's full name
@@ -85,9 +78,10 @@ func main() {
       fileDepth := len(pathSegments) - 1
       fileName := info.Name()
       verboseLog("fileName: " + fileName)
-      uniqueNameString := getUniqueNameString(fileDepth, fileName)
 
-      if (processedFiles[uniqueNameString] != true) {
+      if (processedFiles[path] != true) {
+        parentPath := strings.Join(pathSegments[:len(pathSegments)-1], "/")
+        verboseLog("parentPath: " + parentPath)
         parentDepth := fileDepth - 1
         if (parentDepth < 0) {
           parentDepth = 0
@@ -97,19 +91,19 @@ func main() {
 
         nodes = append(nodes, fileInfo{
           Name: fileName,
+          Path: path,
           Url: buildGitHubUrl(gitRepoUrl, path, info.IsDir()),
           Size: info.Size(),
           Level: fileDepth,
           Extension: getFileExtension(info),
-          Id: createCypherFriendlyVarName(fileName, fileDepth),
+          Id: createCypherFriendlyVarName(path, fileDepth),
           IsDir: info.IsDir(),
           ModTime: info.ModTime().Unix(),
-          ParentName: pathSegments[parentDepth],
-          ParentId : createCypherFriendlyVarName(pathSegments[parentDepth], parentDepth),
+          ParentPath: parentPath,
           Contributions: contributions,
           CommitCount: len(contributions),
         })
-        processedFiles[uniqueNameString] = true
+        processedFiles[path] = true
       }
     }
 
@@ -126,9 +120,9 @@ func main() {
     fmt.Println(":BEGIN")
     label := getLabelForFileNode(currentFile)
 
-    if (!processedNodes[currentFile.Id]) {
+    if (!processedNodes[currentFile.Path]) {
       fmt.Println(fileInfoToCypher(currentFile, label))
-      processedNodes[currentFile.Id] = true
+      processedNodes[currentFile.Path] = true
     }
 
     if (label == "file") {
@@ -157,7 +151,7 @@ func main() {
     fmt.Println(";")
     fmt.Println(":COMMIT")
 
-    if (currentFile.Id != currentFile.ParentId) {
+    if (len(currentFile.ParentPath) > 0) {
       fmt.Println(":BEGIN")
       fmt.Println(folderStructureToCypher(currentFile))
       fmt.Println(";")
