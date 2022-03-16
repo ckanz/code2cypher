@@ -2,6 +2,8 @@ const acorn = require('acorn')
 const fs = require('fs')
 const path = require('path')
 
+const SystemPath = path.join(__dirname, '/')
+
 const getAllFiles = function (dirPath, arrayOfFiles) {
   const files = fs.readdirSync(dirPath)
 
@@ -19,34 +21,57 @@ const getAllFiles = function (dirPath, arrayOfFiles) {
   return arrayOfFiles
 }
 
+const toCypher = (type, size, name, varName, index, parentIndex, rawNode) => {
+  console.log(`CREATE (${varName}_${parentIndex !== undefined ? parentIndex : ''})-[:DECLARES]->(${parentIndex === undefined ? varName + '_' + index : ''}:${type} { size: ${size}, name: '[${name}]', ${Object.entries(rawNode).map(e => `_${e[0]}:'# ${e[1]}'`)} })`)
+}
+
 const allFiles = getAllFiles('src/')
 
-allFiles.forEach(f => {
+/*
+console.log(':BEGIN')
+console.log('MATCH (m) DETACH DELETE m;')
+console.log(':COMMIT')
+*/
+
+allFiles.forEach((f, i) => {
   try {
-  console.log('--- ', f)
-  const file = fs.readFileSync(f, 'utf8')
+    console.log(':BEGIN')
+    const varName = `f_${i}`
+    console.log(`MERGE (${varName}_:file { path: '${f.split(SystemPath)[1]}' })`)
+    const file = fs.readFileSync(f, 'utf8')
 
-  const r = acorn.parse(file, {ecmaVersion: 2020, sourceType: 'module'})
+    const r = acorn.parse(file, {ecmaVersion: 2020, sourceType: 'module'})
 
-  const logNode = (n, parent) => {
-    const d = n.declarations ? n.declarations[0] : n.declaration
-    if (!d) return
-    if (d.id) {
-      console.log(n.type, n.end - n.start, d.id.name)
-    } else if (d.declarations) {
-      console.log(n.type, n.end - n.start, d.declarations[0].id.name)
-    // if (d.declarations[0].body) logNodeBody(d.declarations[0].body.body, d.declarations[0].id.name)
+    const logNode = (n, index, parentIndex) => {
+      if (n.key) {
+        toCypher(n.type, n.end - n.start, n.key.name, varName, index, parentIndex, n)
+        return
+      }
+      const d = n.declarations ? n.declarations[0] : n.declaration
+      if (!d) return
+      if (d.id) {
+        toCypher(n.type, n.end - n.start, d.id.name, varName, index, parentIndex, n)
+      } else if (d.declarations) {
+        toCypher(n.type, n.end - n.start, d.declarations[0].id.name, varName, index, parentIndex, n)
+        if (d.declarations[0].body) logNodeBody(d.declarations[0].body.body, index)
+      }
+      if (d.body) logNodeBody(d.body.body, index)
     }
-  // if (d.body) logNodeBody(d.body.body, d.id.name)
-  }
 
-  const logNodeBody = (nb, parent = '') => {
-    nb.forEach(n => {
-      logNode(n, parent)
-    // if (n.body) logNodeBody(n.body.body, n)
-    })
-  }
+    const logNodeBody = (nb, parentIndex) => {
+      nb.forEach((n, index) => {
+        logNode(n, index, parentIndex)
+        // if (n.body) logNodeBody(n.body.body, index)
+      })
+    }
 
-  logNodeBody(r.body)
-  } catch {}
+    logNodeBody(r.body)
+    console.log(';')
+    console.log(':COMMIT')
+  } catch (e) {
+    console.log(';')
+    console.log(':ROLLBACK')
+  } finally {}
 })
+
+// gxEFPZ1QJUsCrp7i_dHka8XTWcTLhdle8Cp-czKz1o0
