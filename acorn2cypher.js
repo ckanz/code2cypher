@@ -27,12 +27,6 @@ const toCypher = (type, size, name, varName, index, parentIndex, rawNode) => {
 
 const allFiles = getAllFiles('src/')
 
-/*
-console.log(':BEGIN')
-console.log('MATCH (m) DETACH DELETE m;')
-console.log(':COMMIT')
-*/
-
 allFiles.forEach((f, i) => {
   try {
     console.log(':BEGIN')
@@ -40,7 +34,7 @@ allFiles.forEach((f, i) => {
     console.log(`MERGE (${varName}_:file { path: '${f.split(SystemPath)[1]}' })`)
     const file = fs.readFileSync(f, 'utf8')
 
-    const r = acorn.parse(file, {ecmaVersion: 2020, sourceType: 'module'})
+    const r = acorn.parse(file, { ecmaVersion: 2020, sourceType: 'module' })
 
     const logNode = (n, index, parentIndex) => {
       if (n.key) {
@@ -71,7 +65,5 @@ allFiles.forEach((f, i) => {
   } catch (e) {
     console.log(';')
     console.log(':ROLLBACK')
-  } finally {}
+  }
 })
-
-// gxEFPZ1QJUsCrp7i_dHka8XTWcTLhdle8Cp-czKz1o0
