@@ -5,7 +5,6 @@ import (
   "flag"
   "path/filepath"
   "os"
-  "os/exec"
   "log"
   "strings"
 )

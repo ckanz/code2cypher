@@ -30,17 +30,17 @@ func TestFileInfoToCypher(t *testing.T) {
     {
       fileInfo { Id: "fileId", Name: "someDir", IsDir: true, },
       "testLabel",
-      "CREATE (fileId:testLabel { name: 'someDir', url: '' })",
+      "CREATE (fileId:testLabel { name: 'someDir', path: '', url: '', _tempId: 'fileId' })",
     },
     {
       fileInfo { Name: "someDir", IsDir: true, Url: "https://github.com/someName/someRepo/tree/master/someDir" },
       "testLabel",
-      "CREATE (:testLabel { name: 'someDir', url: 'https://github.com/someName/someRepo/tree/master/someDir' })",
+      "CREATE (:testLabel { name: 'someDir', path: '', url: 'https://github.com/someName/someRepo/tree/master/someDir', _tempId: '' })",
     },
     {
       fileInfo { Id: "fileId", Name: "someFile", IsDir: false, Size: 42, CommitCount: 23, ModTime: 111222333, Extension: "go" },
       "testLabel",
-      "CREATE (fileId:testLabel { name: 'someFile', url: '', size: 42, commitCount: 23, lastModifiedDateTime: datetime({ epochseconds: 111222333 }), lastModifiedTimestamp: 111222333, extension: 'go' })",
+      "CREATE (fileId:testLabel { name: 'someFile', path: '', url: '', _tempId: 'fileId', size: 42, commitCount: 23, lastModifiedDateTime: datetime({ epochseconds: 111222333 }), lastModifiedTimestamp: 111222333, extension: 'go' })",
     },
   }
   for _, table := range testTables {
@@ -101,8 +101,8 @@ func TestFolderStructureToCypher(t *testing.T) {
     cypherResult string
   }{
     {
-      fileInfo { Id: "someFileId", ParentId: "someParentId" },
-      "CREATE (someFileId)-[:IN_FOLDER]->(someParentId)",
+      fileInfo { Path: "someFilePath", ParentPath: "someParentPath" },
+      "Match (a:directory { path: 'someParentPath' }) Match (b { path: 'someFilePath' }) CREATE (b)-[:IN_FOLDER]->(a)",
     },
   }
   for _, table := range testTables {
