@@ -57,7 +57,7 @@ func getGitLog(path string, repoPath string) []fileContribution {
     splitLog := strings.Split(contribution, "||")
     if (len(splitLog) > 1) {
       fileContribs = append(fileContribs, fileContribution{
-        Name: splitLog[0],
+        Name: strings.Replace(splitLog[0], "'", " ", -1),
         Email: splitLog[1],
         Commit: splitLog[2],
         AbbreviatedHash: splitLog[3],

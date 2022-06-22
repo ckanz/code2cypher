@@ -7,11 +7,11 @@ import (
   "os"
   "log"
   "strings"
-  "strconv"
 )
 
 type fileInfo struct {
   Name string
+  Path string
   Url string
   Size int64
   Level int
@@ -19,16 +19,15 @@ type fileInfo struct {
   Id string
   Extension string
   ModTime int64
-  ParentName string
-  ParentId string
+  ParentPath string
   Contributions []fileContribution
   CommitCount int
 }
 var nodes []fileInfo
 var processedFiles = make(map[string]bool)
 var processedNodes = make(map[string]bool)
-var processedContributers = make(map[string]int)
-var processedContributions = make(map[string]int)
+var processedContributersSum = make(map[string]int)
+var processedContributionsSum = make(map[string]int)
 var verbose bool
 var simplified bool
 var repoPath string
@@ -40,12 +39,6 @@ func initFlags() {
   flag.BoolVar(&simplified, "simplified", false, "won't create a distinct relationship for each commit when set")
   flag.StringVar(&repoPath, "path", ".", "the full path of the repository")
   flag.Parse()
-}
-
-// getUniqueNameString creates a unique string for a file based on its nested depth in the folder and its name
-// TODO: instead of depth, modified timestamp might be a better value to create unique variable names with
-func getUniqueNameString(index int, element string) string {
-  return strconv.Itoa(index) + "-" + element
 }
 
 // getFileExtension returns the extension for a given file's full name
@@ -85,9 +78,10 @@ func main() {
       fileDepth := len(pathSegments) - 1
       fileName := info.Name()
       verboseLog("fileName: " + fileName)
-      uniqueNameString := getUniqueNameString(fileDepth, fileName)
 
-      if (processedFiles[uniqueNameString] != true) {
+      if (processedFiles[path] != true) {
+        parentPath := strings.Join(pathSegments[:len(pathSegments)-1], "/")
+        verboseLog("parentPath: " + parentPath)
         parentDepth := fileDepth - 1
         if (parentDepth < 0) {
           parentDepth = 0
@@ -97,19 +91,19 @@ func main() {
 
         nodes = append(nodes, fileInfo{
           Name: fileName,
+          Path: path,
           Url: buildGitHubUrl(gitRepoUrl, path, info.IsDir()),
           Size: info.Size(),
           Level: fileDepth,
           Extension: getFileExtension(info),
-          Id: createCypherFriendlyVarName(fileName, fileDepth),
+          Id: createCypherFriendlyVarName(path, fileDepth),
           IsDir: info.IsDir(),
           ModTime: info.ModTime().Unix(),
-          ParentName: pathSegments[parentDepth],
-          ParentId : createCypherFriendlyVarName(pathSegments[parentDepth], parentDepth),
+          ParentPath: parentPath,
           Contributions: contributions,
           CommitCount: len(contributions),
         })
-        processedFiles[uniqueNameString] = true
+        processedFiles[path] = true
       }
     }
 
@@ -121,11 +115,14 @@ func main() {
   verboseLog("")
 
   for _, currentFile := range nodes {
+    var processedContributers = make(map[string]int)
+    var processedContributions = make(map[string]int)
+    fmt.Println(":BEGIN")
     label := getLabelForFileNode(currentFile)
 
-    if (!processedNodes[currentFile.Id]) {
+    if (!processedNodes[currentFile.Path]) {
       fmt.Println(fileInfoToCypher(currentFile, label))
-      processedNodes[currentFile.Id] = true
+      processedNodes[currentFile.Path] = true
     }
 
     if (label == "file") {
@@ -136,33 +133,51 @@ func main() {
           processedContributers[contributerId] = 0
         }
         processedContributers[contributerId] += 1
+        processedContributersSum[contributerId] += 1
 
         contributionId := currentFile.Id + "__" + contributerId
-        contributionCypherStatement := contributionToCypher(currentFile.Id, contributerId, contributionId)
         if (processedContributions[contributionId] < 1) {
-          fmt.Println(contributionCypherStatement)
+          fmt.Println(contributionToCypher(currentFile.Id, contributerId, contributionId))
           processedContributions[contributionId] = 0
         }
         if (simplified != true) {
           fmt.Println(commitToCypher(currentFile.Id, contributerId, contribution))
         }
         processedContributions[contributionId] += 1
+        processedContributionsSum[contributionId] += 1
       }
     }
 
-    if (currentFile.Id != currentFile.ParentId) {
+    fmt.Println(";")
+    fmt.Println(":COMMIT")
+
+    if (len(currentFile.ParentPath) > 0) {
+      fmt.Println(":BEGIN")
       fmt.Println(folderStructureToCypher(currentFile))
+      fmt.Println(";")
+      fmt.Println(":COMMIT")
     }
   }
 
-  for contributerId, contributionCount := range processedContributers {
+  for contributerId, contributionCount := range processedContributersSum {
+    fmt.Println(":BEGIN")
     fmt.Println(contributerToCypherUpdate(contributerId, contributionCount))
-  }
-  for contributionId, commitCount := range processedContributions {
-    fmt.Println(contributionToCypherUpdate(contributionId, commitCount))
+    fmt.Println(";")
+    fmt.Println(":COMMIT")
   }
 
+  for contributionId, commitCount := range processedContributionsSum {
+    fmt.Println(":BEGIN")
+    fmt.Println(contributionToCypherUpdate(contributionId, commitCount))
+    fmt.Println(";")
+    fmt.Println(":COMMIT")
+  }
+
+  fmt.Println(":BEGIN")
+  fmt.Println(removeProperty("_tempId"))
   fmt.Println(";")
+  fmt.Println(":COMMIT")
+
 
   if err != nil {
     log.Println(err)
