@@ -5,6 +5,7 @@ import (
   "flag"
   "path/filepath"
   "os"
+  "os/exec"
   "log"
   "strings"
 )
@@ -165,12 +166,14 @@ func main() {
     fmt.Println(";")
     fmt.Println(":COMMIT")
   }
+
   for contributionId, commitCount := range processedContributionsSum {
     fmt.Println(":BEGIN")
     fmt.Println(contributionToCypherUpdate(contributionId, commitCount))
     fmt.Println(";")
     fmt.Println(":COMMIT")
   }
+
   fmt.Println(":BEGIN")
   fmt.Println(removeProperty("_tempId"))
   fmt.Println(";")

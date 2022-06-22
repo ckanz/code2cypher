@@ -12,4 +12,4 @@
 *.out
 
 code2cypher
-/node_modules/
+*/node_modules/
